@@ -15,7 +15,7 @@ const preCommitHookEntrypoint = resolve(workspaceRoot, "apps/pre-commit/hook.sh"
 
 Given("a commit message file with an AI co-author", function () {
   this.createMessageFile(
-    ["feat: add policy", "", "Co-authored-by: Claude <noreply@anthropic.com>"].join("\n")
+    ["feat: add policy", "", "Co-authored-by: Claude <noreply@anthropic.com>"].join("\n"),
   );
 });
 
@@ -43,7 +43,7 @@ Given("a git repository with a commit containing an AI co-author", function () {
     {
       cwd: repoDir,
       stdio: "ignore",
-    }
+    },
   );
   this.currentRepoDir = repoDir;
 });
@@ -52,9 +52,7 @@ Given("a pull request payload with an AI co-author commit", function () {
   this.pullRequestPayload = [
     {
       sha: "abc1234",
-      message: ["feat: violating commit", "", "Co-authored-by: Codex <bot@openai.com>"].join(
-        "\n"
-      ),
+      message: ["feat: violating commit", "", "Co-authored-by: Codex <bot@openai.com>"].join("\n"),
       authorName: "BDD Runner",
       authorEmail: "bdd@example.com",
     },
@@ -68,7 +66,7 @@ When("I run the CLI check command against that message file", function () {
     {
       cwd: workspaceRoot,
       encoding: "utf8",
-    }
+    },
   );
 });
 
