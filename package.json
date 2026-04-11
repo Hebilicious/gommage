@@ -1,0 +1,21 @@
+{
+  "name": "gommage",
+  "version": "0.0.0",
+  "private": true,
+  "description": "CI-first authorship policy tooling for keeping AI co-authors out of git history.",
+  "type": "module",
+  "devDependencies": {
+    "@changesets/cli": "catalog:",
+    "@cucumber/cucumber": "catalog:",
+    "@types/node": "catalog:",
+    "@typescript/native-preview": "catalog:",
+    "citty": "catalog:",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vitepress": "catalog:",
+    "vitest": "catalog:",
+    "lefthook": "catalog:"
+  },
+  "packageManager": "pnpm@10.33.0"
+}

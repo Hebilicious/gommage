@@ -1,0 +1,16 @@
+version: 1
+
+rules:
+  no-ai-coauthor: true
+  max-authors: 1
+  allow-human-coauthors: false
+  blocked-patterns:
+    - "Generated with"
+    - "🤖"
+  blocked-domains:
+    - "bot.example.com"
+  allowed-patterns: []
+
+scope:
+  range: "origin/main..HEAD"
+

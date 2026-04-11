@@ -1,0 +1,35 @@
+$schema: "https://moonrepo.dev/schemas/project.json"
+
+language: "bash"
+layer: "tool"
+tags:
+  - "pre-commit"
+  - "surface"
+
+tasks:
+  test:
+    command: "cucumber-js"
+    args:
+      - "--import"
+      - "../../packages/bdd-utils/support/*.mjs"
+      - "--import"
+      - "../../packages/bdd-utils/steps/*.mjs"
+      - "tests/bdd/**/*.feature"
+    inputs:
+      - "hook.sh"
+      - "tests/**/*"
+      - "package.json"
+      - "/packages/bdd-utils/**/*"
+      - "/apps/shell/gommage.sh"
+
+  format:
+    command: "oxfmt"
+    args: ["--write", "package.json"]
+    inputs:
+      - "package.json"
+
+  format-check:
+    command: "oxfmt"
+    args: ["--check", "package.json"]
+    inputs:
+      - "package.json"

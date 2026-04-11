@@ -1,0 +1,12 @@
+.DS_Store
+node_modules
+dist
+coverage
+.moon/cache
+.moon/docker
+.proto
+*.tsbuildinfo
+docs/.vitepress/cache
+docs/.vitepress/dist
+docs/.vitepress/.tsbuild
+docs/.vitepress/.tsbuildinfo

@@ -1,0 +1,29 @@
+name: "Gommage"
+description: "Checks commit authorship metadata for AI co-authors, badges, and blocked identities."
+author: "Gommage"
+
+inputs:
+  cwd:
+    description: "Working directory to run git and config discovery from."
+    required: false
+  config-path:
+    description: "Explicit path to .gommage.yml."
+    required: false
+  range:
+    description: "Git revision or range to inspect. Defaults to .gommage.yml scope.range or HEAD."
+    required: false
+  message-file:
+    description: "Optional commit message file to validate instead of a git range."
+    required: false
+
+outputs:
+  violations:
+    description: "Number of violations found."
+  commits-checked:
+    description: "Number of commits inspected."
+  config-path:
+    description: "Resolved config path, if any."
+
+runs:
+  using: "node20"
+  main: "dist/index.js"

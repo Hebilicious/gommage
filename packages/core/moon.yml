@@ -1,0 +1,64 @@
+$schema: "https://moonrepo.dev/schemas/project.json"
+
+language: "typescript"
+layer: "library"
+tags:
+  - "core"
+  - "policy"
+
+tasks:
+  build:
+    command: "tsc"
+    args: ["-p", "tsconfig.json"]
+    inputs:
+      - "src/**/*"
+      - "tests/**/*"
+      - "package.json"
+      - "tsconfig.json"
+    outputs:
+      - "dist"
+
+  lint:
+    command: "oxlint"
+    args: ["--deny-warnings", "src", "tests"]
+    inputs:
+      - "src/**/*"
+      - "tests/**/*"
+      - "package.json"
+      - "tsconfig.json"
+
+  test:
+    command: "vitest"
+    args: ["run"]
+    inputs:
+      - "src/**/*"
+      - "tests/**/*"
+      - "package.json"
+      - "tsconfig.json"
+
+  typecheck:
+    command: "tsgo"
+    args: ["-p", "tsconfig.json", "--noEmit"]
+    inputs:
+      - "src/**/*"
+      - "tests/**/*"
+      - "package.json"
+      - "tsconfig.json"
+
+  format:
+    command: "oxfmt"
+    args: ["--write", "src", "tests", "package.json", "tsconfig.json"]
+    inputs:
+      - "src/**/*"
+      - "tests/**/*"
+      - "package.json"
+      - "tsconfig.json"
+
+  format-check:
+    command: "oxfmt"
+    args: ["--check", "src", "tests", "package.json", "tsconfig.json"]
+    inputs:
+      - "src/**/*"
+      - "tests/**/*"
+      - "package.json"
+      - "tsconfig.json"

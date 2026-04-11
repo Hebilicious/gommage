@@ -1,0 +1,7 @@
+{
+  "name": "@gommage/shell",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Zero-dependency shell surface for Gommage.",
+  "type": "module"
+}

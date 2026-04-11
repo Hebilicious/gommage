@@ -1,0 +1,7 @@
+{
+  "name": "@gommage/bdd-utils",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared Cucumber utilities for Gommage app acceptance tests.",
+  "type": "module"
+}

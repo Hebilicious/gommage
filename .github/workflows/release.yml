@@ -1,0 +1,33 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: moonrepo/setup-toolchain@v0
+        with:
+          auto-install: true
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Validate workspace
+        run: moon ci :build :test :lint :typecheck :format-check
+      - name: Create release PR or publish
+        uses: changesets/action@v1
+        with:
+          version: moon run --affected false release:version
+          publish: moon run --affected false release:publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

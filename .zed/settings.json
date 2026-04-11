@@ -1,0 +1,24 @@
+{
+  "auto_install_extensions": {
+    "oxc": true,
+    "biome": false
+  },
+  "languages": {
+    "JavaScript": {
+      "formatter": "language_server",
+      "language_servers": ["oxc", "!biome"]
+    },
+    "TypeScript": {
+      "formatter": "language_server",
+      "language_servers": ["oxc", "!biome"]
+    },
+    "TSX": {
+      "formatter": "language_server",
+      "language_servers": ["oxc", "!biome"]
+    },
+    "JSON": {
+      "formatter": "language_server",
+      "language_servers": ["!biome"]
+    }
+  }
+}

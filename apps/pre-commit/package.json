@@ -1,0 +1,7 @@
+{
+  "name": "@gommage/pre-commit",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Commit-msg hook surface for Gommage.",
+  "type": "module"
+}

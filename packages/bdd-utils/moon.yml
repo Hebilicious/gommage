@@ -1,0 +1,33 @@
+$schema: "https://moonrepo.dev/schemas/project.json"
+
+language: "javascript"
+layer: "library"
+tags:
+  - "bdd"
+  - "test-utils"
+
+tasks:
+  lint:
+    command: "oxlint"
+    args: ["--deny-warnings", "steps", "support"]
+    inputs:
+      - "steps/**/*"
+      - "support/**/*"
+      - "package.json"
+      - "moon.yml"
+
+  format:
+    command: "oxfmt"
+    args: ["--write", "steps", "support", "package.json"]
+    inputs:
+      - "steps/**/*"
+      - "support/**/*"
+      - "package.json"
+
+  format-check:
+    command: "oxfmt"
+    args: ["--check", "steps", "support", "package.json"]
+    inputs:
+      - "steps/**/*"
+      - "support/**/*"
+      - "package.json"

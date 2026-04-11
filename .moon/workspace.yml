@@ -1,0 +1,16 @@
+$schema: "https://moonrepo.dev/schemas/workspace.json"
+
+projects:
+  core: "packages/core"
+  bdd-utils: "packages/bdd-utils"
+  cli: "apps/cli"
+  github-action: "apps/github-action"
+  github-app: "apps/github-app"
+  pre-commit: "apps/pre-commit"
+  shell: "apps/shell"
+  docs: "docs"
+  release: "tools/release"
+
+vcs:
+  client: "git"
+  defaultBranch: "main"

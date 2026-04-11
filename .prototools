@@ -1,0 +1,8 @@
+proto = "0.55.3"
+node = "24.11.0"
+pnpm = "10.33.0"
+moon = "2.0.3"
+
+[settings]
+auto-install = true
+detect-strategy = "prefer-prototools"

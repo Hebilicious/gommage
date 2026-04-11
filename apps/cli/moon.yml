@@ -1,0 +1,75 @@
+$schema: "https://moonrepo.dev/schemas/project.json"
+
+language: "typescript"
+layer: "tool"
+tags:
+  - "cli"
+  - "surface"
+
+dependsOn:
+  - "core"
+
+tasks:
+  build:
+    command: "tsc"
+    args: ["-p", "tsconfig.json"]
+    deps:
+      - "^:build"
+    inputs:
+      - "src/**/*"
+      - "package.json"
+      - "tsconfig.json"
+    outputs:
+      - "dist"
+
+  lint:
+    command: "oxlint"
+    args: ["--deny-warnings", "src"]
+    inputs:
+      - "src/**/*"
+      - "package.json"
+      - "tsconfig.json"
+
+  test:
+    command: "cucumber-js"
+    args:
+      - "--import"
+      - "../../packages/bdd-utils/support/*.mjs"
+      - "--import"
+      - "../../packages/bdd-utils/steps/*.mjs"
+      - "tests/bdd/**/*.feature"
+    deps:
+      - "core:build"
+      - "~:build"
+    inputs:
+      - "src/**/*"
+      - "tests/**/*"
+      - "package.json"
+      - "tsconfig.json"
+      - "/packages/bdd-utils/**/*"
+
+  typecheck:
+    command: "tsgo"
+    args: ["-p", "tsconfig.json", "--noEmit"]
+    deps:
+      - "^:typecheck"
+    inputs:
+      - "src/**/*"
+      - "package.json"
+      - "tsconfig.json"
+
+  format:
+    command: "oxfmt"
+    args: ["--write", "src", "package.json", "tsconfig.json"]
+    inputs:
+      - "src/**/*"
+      - "package.json"
+      - "tsconfig.json"
+
+  format-check:
+    command: "oxfmt"
+    args: ["--check", "src", "package.json", "tsconfig.json"]
+    inputs:
+      - "src/**/*"
+      - "package.json"
+      - "tsconfig.json"

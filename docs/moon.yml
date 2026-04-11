@@ -1,0 +1,68 @@
+$schema: "https://moonrepo.dev/schemas/project.json"
+
+language: "typescript"
+layer: "application"
+tags:
+  - "docs"
+  - "website"
+
+tasks:
+  build:
+    command: "vitepress"
+    args: ["build", "."]
+    inputs:
+      - ".vitepress/**/*"
+      - "**/*.md"
+      - "package.json"
+      - "tsconfig.json"
+    outputs:
+      - ".vitepress/dist"
+
+  dev:
+    command: "vitepress"
+    args: ["dev", ".", "--host", "0.0.0.0"]
+    preset: "server"
+    inputs:
+      - ".vitepress/**/*"
+      - "**/*.md"
+      - "package.json"
+      - "tsconfig.json"
+
+  preview:
+    command: "vitepress"
+    args: ["preview", ".", "--host", "0.0.0.0"]
+    deps:
+      - "~:build"
+    preset: "server"
+
+  lint:
+    command: "oxlint"
+    args: ["--deny-warnings", ".vitepress/config.ts"]
+    inputs:
+      - ".vitepress/**/*"
+      - "package.json"
+      - "tsconfig.json"
+
+  typecheck:
+    command: "tsgo"
+    args: ["-p", "tsconfig.json", "--noEmit"]
+    inputs:
+      - ".vitepress/**/*"
+      - "package.json"
+      - "tsconfig.json"
+
+  format:
+    command: "oxfmt"
+    args: ["--write", ".vitepress/config.ts", "package.json", "tsconfig.json"]
+    inputs:
+      - ".vitepress/**/*"
+      - "package.json"
+      - "tsconfig.json"
+
+  format-check:
+    command: "oxfmt"
+    args: ["--check", ".vitepress/config.ts", "package.json", "tsconfig.json"]
+    inputs:
+      - ".vitepress/**/*"
+      - "package.json"
+      - "tsconfig.json"

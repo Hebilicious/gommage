@@ -1,0 +1,9 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": ".vitepress/.tsbuild"
+  },
+  "include": [".vitepress/**/*.ts"],
+  "exclude": [".vitepress/dist", ".vitepress/cache"]
+}

@@ -1,0 +1,59 @@
+$schema: "https://moonrepo.dev/schemas/project.json"
+
+language: "javascript"
+layer: "tool"
+tags:
+  - "release"
+  - "changesets"
+
+tasks:
+  changeset:
+    command: "changeset"
+    inputs:
+      - "/.changeset/**/*"
+      - "/package.json"
+      - "/pnpm-workspace.yaml"
+      - "/packages/**/*"
+      - "/apps/**/*"
+      - "package.json"
+      - "moon.yml"
+
+  status:
+    command: "changeset"
+    args: ["status"]
+    inputs:
+      - "/.changeset/**/*"
+      - "/package.json"
+      - "/pnpm-workspace.yaml"
+      - "/packages/**/*"
+      - "/apps/**/*"
+
+  version:
+    command: "changeset"
+    args: ["version"]
+    inputs:
+      - "/.changeset/**/*"
+      - "/package.json"
+      - "/pnpm-workspace.yaml"
+      - "/packages/**/*"
+      - "/apps/**/*"
+
+  publish:
+    command: "changeset"
+    args: ["publish"]
+    deps:
+      - "core:build"
+      - "cli:build"
+      - "github-action:build"
+      - "github-app:build"
+      - "cli:test"
+      - "github-action:test"
+      - "github-app:test"
+      - "pre-commit:test"
+      - "shell:test"
+    inputs:
+      - "/.changeset/**/*"
+      - "/package.json"
+      - "/pnpm-workspace.yaml"
+      - "/packages/**/*"
+      - "/apps/**/*"
