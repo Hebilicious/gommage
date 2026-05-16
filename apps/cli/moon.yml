@@ -11,8 +11,19 @@ dependsOn:
 
 tasks:
   build:
-    command: "tsc"
-    args: ["-p", "tsconfig.json"]
+    command: "tsdown"
+    args:
+      - "src/index.ts"
+      - "--out-dir"
+      - "dist"
+      - "--format"
+      - "esm"
+      - "--dts"
+      - "--sourcemap"
+      - "--platform"
+      - "node"
+      - "--target"
+      - "node20"
     deps:
       - "^:build"
     inputs:
@@ -24,7 +35,7 @@ tasks:
 
   lint:
     command: "oxlint"
-    args: ["--deny-warnings", "src"]
+    args: ["--deny-warnings", "src", "tests"]
     inputs:
       - "src/**/*"
       - "package.json"
@@ -34,9 +45,9 @@ tasks:
     command: "cucumber-js"
     args:
       - "--import"
-      - "../../packages/bdd-utils/support/*.mjs"
+      - "../../packages/bdd-utils/src/world.ts"
       - "--import"
-      - "../../packages/bdd-utils/steps/*.mjs"
+      - "tests/bdd/**/*.ts"
       - "tests/bdd/**/*.feature"
     deps:
       - "core:build"
@@ -60,7 +71,7 @@ tasks:
 
   format:
     command: "oxfmt"
-    args: ["--write", "src", "package.json", "tsconfig.json"]
+    args: ["--write", "src", "tests", "package.json", "tsconfig.json"]
     inputs:
       - "src/**/*"
       - "package.json"
@@ -68,7 +79,7 @@ tasks:
 
   format-check:
     command: "oxfmt"
-    args: ["--check", "src", "package.json", "tsconfig.json"]
+    args: ["--check", "src", "tests", "package.json", "tsconfig.json"]
     inputs:
       - "src/**/*"
       - "package.json"

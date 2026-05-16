@@ -9,7 +9,6 @@ export default defineConfig({
       { text: "Guide", link: "/guide/getting-started" },
       { text: "CLI", link: "/guide/cli" },
       { text: "CI", link: "/guide/ci" },
-      { text: "PRD", link: "/prd" },
     ],
     sidebar: [
       {
@@ -20,13 +19,6 @@ export default defineConfig({
           { text: "CLI", link: "/guide/cli" },
           { text: "CI and Automation", link: "/guide/ci" },
           { text: "Surfaces", link: "/guide/surfaces" },
-        ],
-      },
-      {
-        text: "Reference",
-        items: [
-          { text: "PRD", link: "/prd" },
-          { text: "Implementation Notes", link: "/scaffold-notes" },
         ],
       },
     ],

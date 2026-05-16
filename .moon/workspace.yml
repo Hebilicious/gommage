@@ -8,7 +8,7 @@ projects:
   github-app: "apps/github-app"
   pre-commit: "apps/pre-commit"
   shell: "apps/shell"
-  docs: "docs"
+  website: "website"
   release: "tools/release"
 
 vcs:

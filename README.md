@@ -5,13 +5,13 @@ Gommage is a CI-first tool for enforcing commit authorship policy so LLMs do not
 ## Implemented surfaces
 
 - `@gommage/core`: config loading, commit parsing, AI co-author detection, badge detection, blocked domains, custom patterns, and report formatting
-- `@gommage/cli`: a `citty`-based CLI with `check`, `hook`, and `install`
+- `@gommage/cli`: a `citty`-based CLI with `check`, `fix`, `hook`, and `install`
 - `apps/pre-commit/hook.sh`: portable `commit-msg` hook entrypoint
 - `apps/shell/gommage.sh`: zero-dependency shell checker for ranges or commit message files
 - `@gommage/github-action`: GitHub Action entrypoint with inputs and outputs
 - `@gommage/github-app`: pull-request evaluation helpers for wiring into a hosted app
-- `docs/`: a VitePress site that documents setup, configuration, CLI usage, CI, and product surfaces
-- Per-app `tests/bdd` directories: Gherkin acceptance coverage for the CLI, shell, pre-commit hook, GitHub Action, and GitHub App helper with shared utilities in `packages/bdd-utils`
+- `website/`: a VitePress site that documents setup, configuration, CLI usage, CI, and product surfaces
+- Per-app `tests/bdd` directories: Gherkin acceptance coverage for the CLI, shell, pre-commit hook, GitHub Action, and GitHub App helper with shared TypeScript step files, with only shared world/helpers in `packages/bdd-utils`
 
 ## Tooling model
 
@@ -19,6 +19,7 @@ Gommage is a CI-first tool for enforcing commit authorship policy so LLMs do not
 - `pnpm` uses workspace catalogs for all external dependency versions.
 - `oxlint` handles linting and `oxfmt` handles formatting.
 - `tsgo` from `@typescript/native-preview` is used for typechecking.
+- `tsdown` handles package builds.
 - `changesets` manages versions and release flow.
 - `lefthook` runs formatting, linting, and typechecking before commits.
 
@@ -63,8 +64,10 @@ moon run --affected false :typecheck
 moon run --affected false :format-check
 
 moon run --affected false cli:build
-moon run --affected false docs:dev
+moon run --affected false website:dev
 moon run --affected false release:status
+
+node apps/cli/dist/index.mjs fix --repo . --dry-run
 ```
 
 `--affected false` is useful in fresh local clones before the repository has an initial `HEAD` commit. Once the repo has normal git history, `moon run :build` and `moon ci ...` work as expected.
@@ -79,17 +82,18 @@ The Git pre-commit hook is managed by Lefthook and runs `moon run --affected fal
 
 ## Documentation
 
-The docs site is in [docs](/Users/hebilicious/GitHub/gommage/docs) and can be built with:
+The website is in [website](/Users/hebilicious/GitHub/gommage/website) and can be built with:
 
 ```bash
-moon run --affected false docs:build
+moon run --affected false website:build
 ```
 
-The site includes:
+The website includes:
 
 - getting started
 - configuration reference
 - CLI usage
 - CI and release flow
 - product surface overview
-- the PRD and implementation notes
+
+The repository-level planning docs live at [prd.md](/Users/hebilicious/GitHub/gommage/prd.md) and [scaffold-notes.md](/Users/hebilicious/GitHub/gommage/scaffold-notes.md).

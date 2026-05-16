@@ -10,8 +10,11 @@ import { defineCommand, runMain } from "citty";
 import {
   checkGitRange,
   checkMessageFile,
+  formatRewritePlan,
   formatCheckResult,
   hasViolations,
+  planHistoryRewrite,
+  rewriteGitHistory,
   type CheckResult,
 } from "@gommage/core";
 
@@ -114,7 +117,7 @@ const installCommand = defineCommand({
     const gitDir = resolveGitDir(cwd);
     const hookPath = resolve(gitDir, "hooks", "commit-msg");
     const hookDir = dirname(hookPath);
-    const cliPath = resolve(fileURLToPath(new URL(".", import.meta.url)), "index.js");
+    const cliPath = fileURLToPath(import.meta.url);
 
     if (existsSync(hookPath) && !force) {
       throw new Error(
@@ -147,6 +150,53 @@ const installCommand = defineCommand({
   },
 });
 
+const fixCommand = defineCommand({
+  meta: {
+    name: "fix",
+    description: "Rewrite commit history to remove policy-violating metadata and message lines.",
+  },
+  args: {
+    repo: {
+      type: "string",
+      description: "Repository root whose history should be rewritten.",
+    },
+    config: {
+      type: "string",
+      description: "Explicit path to a .gommage.yml file.",
+    },
+    range: {
+      type: "string",
+      description: "Git revision range or selector to rewrite. Defaults to --all.",
+    },
+    "dry-run": {
+      type: "boolean",
+      description: "Print the rewrite plan without changing git history.",
+    },
+    "author-name": {
+      type: "string",
+      description: "Replacement author name for commits whose author identity must be rewritten.",
+    },
+    "author-email": {
+      type: "string",
+      description: "Replacement author email for commits whose author identity must be rewritten.",
+    },
+  },
+  async run({ args }) {
+    const cwd = resolve(args.repo ?? process.cwd());
+    const rewriteOptions = {
+      cwd,
+      configPath: args.config,
+      range: args.range,
+      replacementAuthorName: args["author-name"],
+      replacementAuthorEmail: args["author-email"],
+    };
+    const dryRun = Boolean(args["dry-run"]);
+    const plan = dryRun ? planHistoryRewrite(rewriteOptions) : rewriteGitHistory(rewriteOptions);
+
+    console.log(formatRewritePlan(plan, { dryRun }));
+  },
+});
+
 const main = defineCommand({
   meta: {
     name: "gommage",
@@ -154,6 +204,7 @@ const main = defineCommand({
   },
   subCommands: {
     check: checkCommand,
+    fix: fixCommand,
     hook: hookCommand,
     install: installCommand,
   },

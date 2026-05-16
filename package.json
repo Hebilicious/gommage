@@ -12,10 +12,11 @@
     "citty": "catalog:",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
+    "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitepress": "catalog:",
     "vitest": "catalog:",
     "lefthook": "catalog:"
   },
-  "packageManager": "pnpm@10.33.0"
+  "packageManager": "pnpm@11.1.2"
 }

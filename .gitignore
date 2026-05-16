@@ -6,7 +6,7 @@ coverage
 .moon/docker
 .proto
 *.tsbuildinfo
-docs/.vitepress/cache
-docs/.vitepress/dist
-docs/.vitepress/.tsbuild
-docs/.vitepress/.tsbuildinfo
+website/.vitepress/cache
+website/.vitepress/dist
+website/.vitepress/.tsbuild
+website/.vitepress/.tsbuildinfo

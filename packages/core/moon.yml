@@ -8,8 +8,19 @@ tags:
 
 tasks:
   build:
-    command: "tsc"
-    args: ["-p", "tsconfig.json"]
+    command: "tsdown"
+    args:
+      - "src/index.ts"
+      - "--out-dir"
+      - "dist"
+      - "--format"
+      - "esm"
+      - "--dts"
+      - "--sourcemap"
+      - "--platform"
+      - "node"
+      - "--target"
+      - "node20"
     inputs:
       - "src/**/*"
       - "tests/**/*"

@@ -15,6 +15,7 @@ tasks:
       - "/pnpm-workspace.yaml"
       - "/packages/**/*"
       - "/apps/**/*"
+      - "/website/**/*"
       - "package.json"
       - "moon.yml"
 
@@ -27,6 +28,7 @@ tasks:
       - "/pnpm-workspace.yaml"
       - "/packages/**/*"
       - "/apps/**/*"
+      - "/website/**/*"
 
   version:
     command: "changeset"
@@ -37,6 +39,7 @@ tasks:
       - "/pnpm-workspace.yaml"
       - "/packages/**/*"
       - "/apps/**/*"
+      - "/website/**/*"
 
   publish:
     command: "changeset"
@@ -57,3 +60,4 @@ tasks:
       - "/pnpm-workspace.yaml"
       - "/packages/**/*"
       - "/apps/**/*"
+      - "/website/**/*"

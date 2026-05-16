@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "description": "CLI surface for Gommage.",
   "bin": {
-    "gommage": "./dist/index.js"
+    "gommage": "./dist/index.mjs"
   },
   "type": "module",
   "publishConfig": {

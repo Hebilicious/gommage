@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 
 import { parse } from "yaml";
@@ -81,6 +82,29 @@ export interface CheckGitRangeOptions extends LoadConfigOptions {
 
 export interface CheckMessageFileOptions extends LoadConfigOptions {
   messageFile: string;
+}
+
+export interface HistoryRewriteOptions extends LoadConfigOptions {
+  range?: string;
+  replacementAuthorName?: string;
+  replacementAuthorEmail?: string;
+}
+
+export interface RewriteCommitPlan {
+  sha: string;
+  originalAuthorName: string;
+  originalAuthorEmail: string;
+  sanitizedAuthorName: string;
+  sanitizedAuthorEmail: string;
+  originalMessage: string;
+  sanitizedMessage: string;
+  changes: string[];
+}
+
+export interface RewritePlanResult {
+  config: GommageConfig;
+  range: string;
+  commits: RewriteCommitPlan[];
 }
 
 const CONFIG_FILE_NAME = ".gommage.yml";
@@ -295,6 +319,150 @@ export function checkMessageFile(options: CheckMessageFileOptions): CheckResult 
   return checkCommits([commit], config);
 }
 
+export function planHistoryRewrite(options: HistoryRewriteOptions = {}): RewritePlanResult {
+  const cwd = resolve(options.cwd ?? process.cwd());
+  const { config } = loadConfig({ cwd, configPath: options.configPath });
+  const range = options.range ?? "--all";
+  const commits = readCommitsFromGit({ cwd, range });
+  const replacementIdentity = getRewriteReplacementIdentity(cwd, options);
+
+  return {
+    config,
+    range,
+    commits: commits
+      .map((commit) => planCommitRewrite(commit, config, replacementIdentity))
+      .filter((commit): commit is RewriteCommitPlan => commit !== null),
+  };
+}
+
+export function rewriteGitHistory(options: HistoryRewriteOptions = {}): RewritePlanResult {
+  const cwd = resolve(options.cwd ?? process.cwd());
+  const plan = planHistoryRewrite({ ...options, cwd });
+
+  if (plan.commits.length === 0) {
+    return plan;
+  }
+
+  const tempDir = mkdtempSync(resolve(tmpdir(), "gommage-rewrite-"));
+  const planFile = resolve(tempDir, "plan.json");
+  const helperFile = resolve(tempDir, "rewrite-helper.cjs");
+
+  writeFileSync(
+    planFile,
+    JSON.stringify(
+      plan.commits.map((commit) => ({
+        sha: commit.sha,
+        sanitizedAuthorName: commit.sanitizedAuthorName,
+        sanitizedAuthorEmail: commit.sanitizedAuthorEmail,
+        sanitizedMessage: commit.sanitizedMessage,
+      })),
+    ),
+  );
+  writeFileSync(helperFile, getRewriteHelperScript());
+
+  const envFilter = `eval "$(${quoteForShell(process.execPath)} ${quoteForShell(helperFile)} ${quoteForShell(planFile)} env "$GIT_COMMIT")"`;
+  const msgFilter = [
+    quoteForShell(process.execPath),
+    quoteForShell(helperFile),
+    quoteForShell(planFile),
+    "msg",
+    '"$GIT_COMMIT"',
+  ].join(" ");
+
+  try {
+    execFileSync(
+      "git",
+      [
+        "filter-branch",
+        "-f",
+        "--env-filter",
+        envFilter,
+        "--msg-filter",
+        msgFilter,
+        "--tag-name-filter",
+        "cat",
+        "--",
+        plan.range,
+      ],
+      {
+        cwd,
+        stdio: "ignore",
+        env: {
+          ...process.env,
+          FILTER_BRANCH_SQUELCH_WARNING: "1",
+        },
+      },
+    );
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+
+  return plan;
+}
+
+export function formatRewritePlan(
+  plan: RewritePlanResult,
+  options: { dryRun?: boolean } = {},
+): string {
+  const dryRun = options.dryRun ?? false;
+
+  if (plan.commits.length === 0) {
+    return dryRun
+      ? "Gommage found no commits that would need rewriting."
+      : "Gommage found no commits that needed rewriting.";
+  }
+
+  const heading = dryRun
+    ? `Gommage would rewrite ${plan.commits.length} commit(s).`
+    : `Gommage rewrote ${plan.commits.length} commit(s).`;
+  const details = plan.commits.map((commit) => {
+    const subject = firstNonEmptyLine(commit.sanitizedMessage) ?? "(no subject)";
+
+    if (!dryRun) {
+      const lines = [`- ${commit.sha.slice(0, 7)} ${subject}`];
+
+      for (const change of commit.changes) {
+        lines.push(`  - ${change}`);
+      }
+
+      if (
+        commit.originalAuthorName !== commit.sanitizedAuthorName ||
+        commit.originalAuthorEmail !== commit.sanitizedAuthorEmail
+      ) {
+        lines.push(
+          `  - author: ${commit.originalAuthorName} <${commit.originalAuthorEmail}> -> ${commit.sanitizedAuthorName} <${commit.sanitizedAuthorEmail}>`,
+        );
+      }
+
+      return lines.join("\n");
+    }
+
+    return [
+      `Commit ${commit.sha.slice(0, 7)} preview`,
+      "Old author:",
+      `  ${commit.originalAuthorName} <${commit.originalAuthorEmail}>`,
+      "New author:",
+      `  ${commit.sanitizedAuthorName} <${commit.sanitizedAuthorEmail}>`,
+      "Old message:",
+      indentBlock(commit.originalMessage),
+      "New message:",
+      indentBlock(commit.sanitizedMessage),
+      "Planned changes:",
+      ...commit.changes.map((change) => `  - ${change}`),
+    ].join("\n");
+  });
+
+  const lines = [heading, `Range: ${plan.range}`, "", ...details];
+
+  if (dryRun) {
+    lines.push("", "No git history was changed because --dry-run was set.");
+  } else {
+    lines.push("", "Git backup refs were written under refs/original/ by git filter-branch.");
+  }
+
+  return lines.join("\n");
+}
+
 export function readCommitsFromGit(options: { cwd?: string; range: string }): CommitInput[] {
   const cwd = resolve(options.cwd ?? process.cwd());
   const output = execFileSync(
@@ -376,6 +544,143 @@ function findConfigPath(startDir: string): string | null {
   }
 }
 
+function planCommitRewrite(
+  commit: CommitInput,
+  config: GommageConfig,
+  replacementIdentity: CommitIdentity | null,
+): RewriteCommitPlan | null {
+  const allowMatchers = config.rules.allowedPatterns.map(toPattern);
+  const lineEntries = commit.message.split(/\r?\n/u).map((line) => ({
+    line: line.replace(/[ \t]+$/u, ""),
+    trimmed: line.trim(),
+    keep: true,
+    coAuthor: null as CoAuthor | null,
+  }));
+  const changes: string[] = [];
+  const keptCoAuthorIndexes: number[] = [];
+
+  for (const [index, entry] of lineEntries.entries()) {
+    if (!entry.trimmed) {
+      continue;
+    }
+
+    const coAuthor = parseCoAuthorLine(entry.trimmed);
+    if (coAuthor) {
+      entry.coAuthor = coAuthor;
+
+      if (allowMatchers.some((matcher) => matcher.test(entry.trimmed))) {
+        keptCoAuthorIndexes.push(index);
+        continue;
+      }
+
+      if (config.rules.noAiCoauthor && isAiIdentity(coAuthor)) {
+        entry.keep = false;
+        changes.push(`remove AI co-author trailer: "${entry.trimmed}"`);
+        continue;
+      }
+
+      if (!config.rules.allowHumanCoauthors) {
+        entry.keep = false;
+        changes.push(`remove disallowed co-author trailer: "${entry.trimmed}"`);
+        continue;
+      }
+
+      if (matchesBlockedDomain(coAuthor.email, config.rules.blockedDomains)) {
+        entry.keep = false;
+        changes.push(`remove blocked-domain co-author trailer: "${entry.trimmed}"`);
+        continue;
+      }
+
+      keptCoAuthorIndexes.push(index);
+      continue;
+    }
+
+    if (allowMatchers.some((matcher) => matcher.test(entry.trimmed))) {
+      continue;
+    }
+
+    if (DEFAULT_BADGE_PATTERNS.some((pattern) => pattern.test(entry.trimmed))) {
+      entry.keep = false;
+      changes.push(`remove AI badge line: "${entry.trimmed}"`);
+      continue;
+    }
+
+    for (const blockedPattern of config.rules.blockedPatterns) {
+      if (toPattern(blockedPattern).test(entry.trimmed)) {
+        entry.keep = false;
+        changes.push(`remove blocked pattern line: "${entry.trimmed}"`);
+        break;
+      }
+    }
+  }
+
+  if (config.rules.maxAuthors !== null) {
+    const maxCoAuthors = Math.max(config.rules.maxAuthors - 1, 0);
+    const extraCoAuthorIndexes = keptCoAuthorIndexes.slice(maxCoAuthors);
+
+    for (const index of extraCoAuthorIndexes) {
+      if (lineEntries[index]) {
+        lineEntries[index].keep = false;
+        changes.push(`remove extra co-author trailer: "${lineEntries[index].trimmed}"`);
+      }
+    }
+  }
+
+  let sanitizedAuthorName = commit.authorName;
+  let sanitizedAuthorEmail = commit.authorEmail;
+
+  if (shouldRewriteAuthor(commit, config)) {
+    if (!replacementIdentity) {
+      throw new Error(
+        `Commit ${commit.sha.slice(0, 7)} requires author replacement. Set git user.name/user.email in the target repository or pass --author-name and --author-email.`,
+      );
+    }
+
+    sanitizedAuthorName = replacementIdentity.name;
+    sanitizedAuthorEmail = replacementIdentity.email;
+    changes.push("replace author identity");
+  }
+
+  removeSingleAuthorTrailers(
+    lineEntries,
+    keptCoAuthorIndexes,
+    {
+      name: sanitizedAuthorName,
+      email: sanitizedAuthorEmail,
+    },
+    changes,
+  );
+
+  const sanitizedMessage = normalizeCommitMessage(
+    lineEntries.filter((entry) => entry.keep).map((entry) => entry.line),
+  );
+
+  if (!sanitizedMessage) {
+    throw new Error(
+      `Unable to automatically sanitize commit ${commit.sha.slice(0, 7)} because the rewritten message would be empty.`,
+    );
+  }
+
+  if (
+    sanitizedMessage === commit.message &&
+    sanitizedAuthorName === commit.authorName &&
+    sanitizedAuthorEmail === commit.authorEmail
+  ) {
+    return null;
+  }
+
+  return {
+    sha: commit.sha,
+    originalAuthorName: commit.authorName,
+    originalAuthorEmail: commit.authorEmail,
+    sanitizedAuthorName,
+    sanitizedAuthorEmail,
+    originalMessage: commit.message,
+    sanitizedMessage,
+    changes,
+  };
+}
+
 function mergeConfig(parsed: Record<string, unknown> | null): GommageConfig {
   if (!parsed) {
     return getDefaultConfig();
@@ -411,18 +716,7 @@ function mergeConfig(parsed: Record<string, unknown> | null): GommageConfig {
 
 function extractCoAuthors(message: string): CoAuthor[] {
   return splitMessageLines(message)
-    .map((line) => {
-      const match = /^Co-authored-by:\s*(.+?)\s*<([^>]+)>\s*$/i.exec(line);
-      if (!match) {
-        return null;
-      }
-
-      return {
-        line,
-        name: match[1].trim(),
-        email: match[2].trim(),
-      };
-    })
+    .map((line) => parseCoAuthorLine(line))
     .filter((value): value is CoAuthor => value !== null);
 }
 
@@ -430,6 +724,13 @@ function isAiIdentity(identity: CommitIdentity): boolean {
   return (
     AI_NAME_PATTERNS.some((pattern) => pattern.test(identity.name)) ||
     AI_EMAIL_PATTERNS.some((pattern) => pattern.test(identity.email))
+  );
+}
+
+function shouldRewriteAuthor(commit: CommitInput, config: GommageConfig): boolean {
+  return (
+    isAiIdentity({ name: commit.authorName, email: commit.authorEmail }) ||
+    matchesBlockedDomain(commit.authorEmail, config.rules.blockedDomains)
   );
 }
 
@@ -501,6 +802,166 @@ function splitMessageLines(message: string): string[] {
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function parseCoAuthorLine(line: string): CoAuthor | null {
+  const match = /^Co-authored-by:\s*(.+?)\s*<([^>]+)>\s*$/i.exec(line);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    line,
+    name: match[1].trim(),
+    email: match[2].trim(),
+  };
+}
+
+function normalizeCommitMessage(lines: string[]): string {
+  const normalized: string[] = [];
+
+  for (const line of lines) {
+    if (!line.trim()) {
+      if (normalized.length === 0 || !normalized[normalized.length - 1]?.trim()) {
+        continue;
+      }
+
+      normalized.push("");
+      continue;
+    }
+
+    normalized.push(line);
+  }
+
+  while (normalized.length > 0 && !normalized[normalized.length - 1]?.trim()) {
+    normalized.pop();
+  }
+
+  return normalized.join("\n");
+}
+
+function firstNonEmptyLine(message: string): string | null {
+  for (const line of message.split(/\r?\n/u)) {
+    const trimmed = line.trim();
+    if (trimmed) {
+      return trimmed;
+    }
+  }
+
+  return null;
+}
+
+function removeSingleAuthorTrailers(
+  lineEntries: Array<{ line: string; trimmed: string; keep: boolean; coAuthor: CoAuthor | null }>,
+  keptCoAuthorIndexes: number[],
+  author: CommitIdentity,
+  changes: string[],
+): void {
+  const remainingCoAuthors = keptCoAuthorIndexes
+    .map((index) => lineEntries[index])
+    .filter(
+      (entry): entry is { line: string; trimmed: string; keep: boolean; coAuthor: CoAuthor } =>
+        Boolean(entry?.keep && entry.coAuthor),
+    )
+    .map((entry) => entry.coAuthor);
+
+  const uniqueAuthors = [author, ...remainingCoAuthors].reduce<CommitIdentity[]>((all, current) => {
+    if (all.some((known) => sameIdentity(known, current))) {
+      return all;
+    }
+
+    all.push(current);
+    return all;
+  }, []);
+
+  if (uniqueAuthors.length > 1) {
+    return;
+  }
+
+  for (const index of keptCoAuthorIndexes) {
+    const entry = lineEntries[index];
+    if (!entry?.keep || !entry.coAuthor) {
+      continue;
+    }
+
+    entry.keep = false;
+    changes.push(`remove redundant co-author trailer: "${entry.trimmed}"`);
+  }
+}
+
+function indentBlock(value: string): string {
+  return value
+    .split(/\r?\n/u)
+    .map((line) => `  ${line}`)
+    .join("\n");
+}
+
+function getRewriteReplacementIdentity(
+  cwd: string,
+  options: HistoryRewriteOptions,
+): CommitIdentity | null {
+  const name = options.replacementAuthorName ?? readGitConfigValue(cwd, "user.name");
+  const email = options.replacementAuthorEmail ?? readGitConfigValue(cwd, "user.email");
+
+  if (!name || !email) {
+    return null;
+  }
+
+  return { name, email };
+}
+
+function sameIdentity(left: CommitIdentity, right: CommitIdentity): boolean {
+  const leftName = left.name.trim().toLowerCase();
+  const rightName = right.name.trim().toLowerCase();
+  const leftEmail = left.email.trim().toLowerCase();
+  const rightEmail = right.email.trim().toLowerCase();
+
+  return Boolean((leftEmail && leftEmail === rightEmail) || (leftName && leftName === rightName));
+}
+
+function readGitConfigValue(cwd: string, key: string): string | null {
+  try {
+    return execFileSync("git", ["config", "--get", key], {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return null;
+  }
+}
+
+function quoteForShell(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+function getRewriteHelperScript(): string {
+  return [
+    "const fs = require('node:fs');",
+    "const plan = new Map(JSON.parse(fs.readFileSync(process.argv[2], 'utf8')).map((entry) => [entry.sha, entry]));",
+    "const mode = process.argv[3];",
+    "const sha = process.argv[4];",
+    "const entry = plan.get(sha);",
+    "if (!entry) {",
+    "  if (mode === 'msg') {",
+    "    process.stdin.pipe(process.stdout);",
+    "    process.stdin.resume();",
+    "  } else {",
+    "    process.exit(0);",
+    "  }",
+    "} else if (mode === 'msg') {",
+    "  process.stdout.write(`${entry.sanitizedMessage}\\n`);",
+    "  process.exit(0);",
+    "} else if (mode === 'env') {",
+    "  const quote = (value) => `'${String(value).replace(/'/g, `'\\\\''`)}'`;",
+    "  process.stdout.write([",
+    "    `export GIT_AUTHOR_NAME=${quote(entry.sanitizedAuthorName)}`,",
+    "    `export GIT_AUTHOR_EMAIL=${quote(entry.sanitizedAuthorEmail)}`,",
+    "    `export GIT_COMMITTER_NAME=${quote(entry.sanitizedAuthorName)}`,",
+    "    `export GIT_COMMITTER_EMAIL=${quote(entry.sanitizedAuthorEmail)}`",
+    "  ].join('\\n'));",
+    "}",
+  ].join("\n");
 }
 
 function asObject(value: unknown): Record<string, unknown> {

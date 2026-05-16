@@ -18,16 +18,27 @@ moon run --affected false github-app:build
 ## Run checks locally
 
 ```bash
-node apps/cli/dist/index.js check
-node apps/cli/dist/index.js check HEAD~5..HEAD
-node apps/cli/dist/index.js hook .git/COMMIT_EDITMSG
+node apps/cli/dist/index.mjs check
+node apps/cli/dist/index.mjs check HEAD~5..HEAD
+node apps/cli/dist/index.mjs hook .git/COMMIT_EDITMSG
+node apps/cli/dist/index.mjs fix --repo . --dry-run
 ```
 
 ## Install the commit hook
 
 ```bash
-node apps/cli/dist/index.js install --force
+node apps/cli/dist/index.mjs install --force
 ```
+
+## Dry-run a history cleanup
+
+```bash
+node apps/cli/dist/index.mjs fix --repo . --dry-run
+```
+
+If the plan looks correct, run the same command without `--dry-run` to rewrite the selected history.
+
+The dry run prints the exact rewritten author and the exact rewritten commit message so you can review the end state before touching git history.
 
 ## Use moon directly
 

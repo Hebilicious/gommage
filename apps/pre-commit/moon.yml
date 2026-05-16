@@ -11,9 +11,9 @@ tasks:
     command: "cucumber-js"
     args:
       - "--import"
-      - "../../packages/bdd-utils/support/*.mjs"
+      - "../../packages/bdd-utils/src/world.ts"
       - "--import"
-      - "../../packages/bdd-utils/steps/*.mjs"
+      - "tests/bdd/**/*.ts"
       - "tests/bdd/**/*.feature"
     inputs:
       - "hook.sh"
@@ -22,14 +22,34 @@ tasks:
       - "/packages/bdd-utils/**/*"
       - "/apps/shell/gommage.sh"
 
+  lint:
+    command: "oxlint"
+    args: ["--deny-warnings", "tests"]
+    inputs:
+      - "tests/**/*"
+      - "package.json"
+      - "tsconfig.json"
+
+  typecheck:
+    command: "tsgo"
+    args: ["-p", "tsconfig.json", "--noEmit"]
+    inputs:
+      - "tests/**/*"
+      - "package.json"
+      - "tsconfig.json"
+
   format:
     command: "oxfmt"
-    args: ["--write", "package.json"]
+    args: ["--write", "tests", "package.json", "tsconfig.json"]
     inputs:
+      - "tests/**/*"
       - "package.json"
+      - "tsconfig.json"
 
   format-check:
     command: "oxfmt"
-    args: ["--check", "package.json"]
+    args: ["--check", "tests", "package.json", "tsconfig.json"]
     inputs:
+      - "tests/**/*"
       - "package.json"
+      - "tsconfig.json"

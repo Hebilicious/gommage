@@ -1,9 +1,13 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist"
+    "allowImportingTsExtensions": true
   },
-  "include": ["src/**/*.ts"],
+  "include": [
+    "src/**/*.ts",
+    "tests/**/*.ts",
+    "../../packages/bdd-utils/src/**/*.ts",
+    "../../packages/core/src/**/*.ts"
+  ],
   "exclude": ["dist"]
 }

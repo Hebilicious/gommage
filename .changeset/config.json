@@ -7,5 +7,5 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["@gommage/bdd-utils", "@gommage/pre-commit", "@gommage/shell", "@gommage/docs", "@gommage/release"]
+  "ignore": ["@gommage/bdd-utils", "@gommage/pre-commit", "@gommage/shell", "@gommage/website", "@gommage/release"]
 }

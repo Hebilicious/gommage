@@ -62,7 +62,7 @@ Gommage ships as **one core library** with **five delivery mechanisms**:
 
 | Surface | Use case | How it works |
 | --- | --- | --- |
-| **CLI** (`gommage`) | Local dev, CI scripts, ad-hoc checks | `gommage check`, `gommage check HEAD~5..HEAD`, `gommage install` |
+| **CLI** (`gommage`) | Local dev, CI scripts, ad-hoc checks | `gommage check`, `gommage check HEAD~5..HEAD`, `gommage fix --dry-run`, `gommage install` |
 | **Pre-commit hook** | Block bad commits before they're created | `commit-msg` hook via `gommage hook` or `.pre-commit-config.yaml` |
 | **Shell script** | Zero-dependency option for any CI | Portable `sh` script, downloads nothing, greps commit messages |
 | **GitHub Action** | First-class GHA workflow step | `uses: gommage/gommage-action@v1` with config inputs |
@@ -152,8 +152,10 @@ gommage/
 │       ├── proto/
 │       ├── grill-me/
 │       └── tdd/
-└── docs/
-    └── prd.md
+├── website/
+│   └── guide/
+├── prd.md
+└── scaffold-notes.md
 ```
 
 ### Why moon + proto
@@ -195,7 +197,7 @@ gommage/
 - commitlint plugin (`@gommage/commitlint-plugin`) for teams already using commitlint.
 - GitLab CI template.
 - `gommage audit` command — scan entire repo history for AI co-authorship.
-- `gommage fix` command — interactively rewrite commits to remove AI trailers.
+- `gommage fix` command — rewrite commits to remove AI trailers, bad author identities, and other blocked metadata with a dry-run preview.
 
 ---
 
@@ -222,4 +224,3 @@ gommage/
 2. **Default strictness**: Should the default be "block all co-authors" or "block only AI co-authors"? Leaning toward "block AI co-authors only" to avoid blocking legitimate human pair-programming co-authors.
 3. **AI identity database**: Should this be a separate, community-maintained package (like `caniuse-db`) or inline in core?
 4. **Inverse mode**: Some teams *want* to require AI disclosure (force `Co-authored-by: Claude` when AI was used). This is a fundamentally different product direction — park it for v1.0+.
-
