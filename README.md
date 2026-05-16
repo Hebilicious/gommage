@@ -17,7 +17,7 @@ pnpm add -D @gommage/cli
 Then run it through your package manager or installed binary:
 
 ```bash
-pnpm exec gommage check
+gommage check
 ```
 
 ### Configure
@@ -119,19 +119,40 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: Hebilicious/gommage/apps/github-action@main
+      - uses: gommage/gommage-action@v1
         with:
           range: origin/${{ github.base_ref }}..HEAD
 ```
 
 The action accepts `cwd`, `config-path`, `range`, and `message-file`. It outputs `violations`, `commits-checked`, and `config-path`.
 
+### Use It in a GitHub App
+
+Use the GitHub App package when you want organization-wide PR checks without adding a workflow file to every repository. The package gives your app the policy evaluation and check-run output helpers; your app stays responsible for receiving webhooks, loading repository config, and creating the GitHub check run.
+
+```ts
+import { buildCheckRunOutput, evaluatePullRequestCommits } from "@gommage/github-app";
+
+const evaluation = evaluatePullRequestCommits([
+  {
+    sha: "abc1234",
+    message: "feat: add policy",
+    authorName: "Jane Human",
+    authorEmail: "jane@example.com",
+  },
+]);
+
+const output = buildCheckRunOutput(evaluation);
+```
+
+Use this surface when you want one installed GitHub App to enforce the same authorship policy across many repositories, while still allowing each repository to keep its own `.gommage.yml`.
+
 ### Use It Without Node Tooling
 
-For minimal CI images or repositories that do not use Node, vendor the shell checker and run it directly:
+For minimal CI images or repositories that do not use Node, install or vendor the shell checker as `gommage.sh` and run it directly:
 
 ```bash
-apps/shell/gommage.sh check origin/main..HEAD
+gommage.sh check origin/main..HEAD
 ```
 
 The shell checker catches common AI co-author trailers and generated-with badges. Use the CLI when you need the full `.gommage.yml` policy engine.
