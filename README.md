@@ -1,31 +1,28 @@
 # Gommage
 
-Gommage is a CI-first tool for enforcing commit authorship policy so LLMs do not silently land in git history as co-authors, badges, or bot identities.
+Gommage keeps AI assistants out of your git authorship metadata. It checks commit messages and commit authors for AI co-author trailers, generated-with badges, blocked patterns, blocked email domains, and commits authored by known bot identities.
 
-## Implemented surfaces
+It is meant to fit into the workflow you already use: local checks, commit hooks, CI, GitHub Actions, shell-only environments, and history cleanup.
 
-- `@gommage/core`: config loading, commit parsing, AI co-author detection, badge detection, blocked domains, custom patterns, and report formatting
-- `@gommage/cli`: a `citty`-based CLI with `check`, `fix`, `hook`, and `install`
-- `apps/pre-commit/hook.sh`: portable `commit-msg` hook entrypoint
-- `apps/shell/gommage.sh`: zero-dependency shell checker for ranges or commit message files
-- `@gommage/github-action`: GitHub Action entrypoint with inputs and outputs
-- `@gommage/github-app`: pull-request evaluation helpers for wiring into a hosted app
-- `website/`: a VitePress site that documents setup, configuration, CLI usage, CI, and product surfaces
-- Per-app `tests/bdd` directories: Gherkin acceptance coverage for the CLI, shell, pre-commit hook, GitHub Action, and GitHub App helper with shared TypeScript step files, with only shared world/helpers in `packages/bdd-utils`
+## Documentation
 
-## Tooling model
+### Install
 
-- `moon` is the task runner. Package scripts have been removed in favor of project tasks.
-- `pnpm` uses workspace catalogs for all external dependency versions.
-- `oxlint` handles linting and `oxfmt` handles formatting.
-- `tsgo` from `@typescript/native-preview` is used for typechecking.
-- `tsdown` handles package builds.
-- `changesets` manages versions and release flow.
-- `lefthook` runs formatting, linting, and typechecking before commits.
+Use the CLI package when you want local checks, hooks, or history cleanup:
 
-## Configuration
+```bash
+pnpm add -D @gommage/cli
+```
 
-Gommage discovers `.gommage.yml` by walking up from the current working directory unless `--config` or the Action `config-path` input is provided.
+Then run it through your package manager or installed binary:
+
+```bash
+pnpm exec gommage check
+```
+
+### Configure
+
+Gommage discovers `.gommage.yml` by walking up from the current directory. You can also pass an explicit config path with `--config` or the GitHub Action `config-path` input.
 
 ```yaml
 version: 1
@@ -45,55 +42,147 @@ scope:
   range: "origin/main..HEAD"
 ```
 
-Defaults are intentionally conservative about false positives for human collaborators:
+Defaults are conservative about human collaborators:
 
-- `no-ai-coauthor: true`
-- `allow-human-coauthors: true`
-- `max-authors: null`
-- empty custom pattern and domain lists
+- AI co-author trailers are blocked.
+- Human co-authors are allowed unless `allow-human-coauthors: false`.
+- There is no author-count limit unless `max-authors` is set.
+- Custom blocked patterns and domains are empty unless configured.
 
-## Common commands
+### Use It Locally
+
+Check the configured range:
+
+```bash
+gommage check
+```
+
+Check a specific range before opening a pull request:
+
+```bash
+gommage check origin/main..HEAD
+```
+
+Get machine-readable output for scripts:
+
+```bash
+gommage check HEAD~10..HEAD --output json
+```
+
+### Block Bad Commits Before They Land
+
+Install Gommage as a `commit-msg` hook:
+
+```bash
+gommage install
+```
+
+The hook validates the commit message file and fails the commit if an AI trailer or blocked marker is present. Use this when you want fast local feedback before CI.
+
+### Clean Existing History
+
+Preview a cleanup before rewriting anything:
+
+```bash
+gommage fix --repo . --dry-run
+```
+
+Dry-run output shows the exact old author, new author, old message, and new message for every commit that would change. If the preview is correct, rerun without `--dry-run`:
+
+```bash
+gommage fix --repo .
+```
+
+You can restrict the rewrite and set the replacement identity explicitly:
+
+```bash
+gommage fix --repo . --range HEAD~10..HEAD --author-name "Jane Human" --author-email jane@example.com
+```
+
+History rewrites are destructive by nature. Review the dry run first, coordinate with collaborators, and push rewritten history only when everyone expects it.
+
+### Use It in GitHub Actions
+
+Run Gommage on pull requests:
+
+```yaml
+name: gommage
+
+on:
+  pull_request:
+
+jobs:
+  authorship:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: Hebilicious/gommage/apps/github-action@main
+        with:
+          range: origin/${{ github.base_ref }}..HEAD
+```
+
+The action accepts `cwd`, `config-path`, `range`, and `message-file`. It outputs `violations`, `commits-checked`, and `config-path`.
+
+### Use It Without Node Tooling
+
+For minimal CI images or repositories that do not use Node, vendor the shell checker and run it directly:
+
+```bash
+apps/shell/gommage.sh check origin/main..HEAD
+```
+
+The shell checker catches common AI co-author trailers and generated-with badges. Use the CLI when you need the full `.gommage.yml` policy engine.
+
+### Fit It Into a Team Workflow
+
+- Solo developers can run `gommage install` once and let the commit hook catch accidental AI trailers.
+- Maintainers can run `gommage check origin/main..HEAD` before merging contributor branches.
+- CI can run the GitHub Action on pull requests so policy is enforced even when contributors do not install hooks.
+- Teams cleaning old repositories can use `gommage fix --dry-run` to review an exact rewrite plan before changing history.
+- Organizations can wire the GitHub App helper into a hosted app for centralized PR checks across many repositories.
+
+### More Docs
+
+The full documentation website lives in [website](website).
+
+## Contributors
+
+This section is for people changing Gommage itself. End users should not need these commands.
+
+Install dependencies:
 
 ```bash
 pnpm install
-
-moon run --affected false :build
-moon run --affected false :test
-moon run --affected false :lint
-moon run --affected false :typecheck
-moon run --affected false :format-check
-
-moon run --affected false cli:build
-moon run --affected false website:dev
-moon run --affected false release:status
-
-node apps/cli/dist/index.mjs fix --repo . --dry-run
 ```
 
-`--affected false` is useful in fresh local clones before the repository has an initial `HEAD` commit. Once the repo has normal git history, `moon run :build` and `moon ci ...` work as expected.
-
-The Git pre-commit hook is managed by Lefthook and runs `moon run --affected false :format`, `moon run --affected false :lint`, and `moon run --affected false :typecheck`.
-
-## CI and releases
-
-- CI uses `moon ci :build :test :lint :typecheck :format-check`.
-- Release automation is configured through `.changeset/config.json` and `.github/workflows/release.yml`.
-- The release workflow uses Changesets to open release PRs and publish when configured with `NPM_TOKEN`.
-
-## Documentation
-
-The website is in [website](/Users/hebilicious/GitHub/gommage/website) and can be built with:
+Use moon for repository tasks:
 
 ```bash
-moon run --affected false website:build
+moon run :build
+moon run :test
+moon run :lint
+moon run :typecheck
+moon run :format-check
 ```
 
-The website includes:
+Run the docs site locally:
 
-- getting started
-- configuration reference
-- CLI usage
-- CI and release flow
-- product surface overview
+```bash
+moon run website:dev
+```
 
-The repository-level planning docs live at [prd.md](/Users/hebilicious/GitHub/gommage/prd.md) and [scaffold-notes.md](/Users/hebilicious/GitHub/gommage/scaffold-notes.md).
+Before pushing changes, run the same verification used for review:
+
+```bash
+moon run :build :test :lint :typecheck :format-check
+moon run release:status
+```
+
+Contributor notes:
+
+- Prefer `moon` commands over package scripts or direct binaries.
+- Use `pnpm install` only for dependency installation and lockfile updates.
+- Generated outputs such as `dist`, VitePress build output, and moon cache should stay out of source control.
