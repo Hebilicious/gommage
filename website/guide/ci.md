@@ -5,11 +5,11 @@
 Build the action package and point workflows at the action directory or a published release.
 
 ```yaml
-- uses: actions/checkout@v4
+- uses: actions/checkout@v6.0.2
   with:
     fetch-depth: 0
 
-- uses: moonrepo/setup-toolchain@v0
+- uses: moonrepo/setup-toolchain@v0.6.4
   with:
     auto-install: true
 

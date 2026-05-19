@@ -18,6 +18,7 @@ import {
 } from "../src/index.js";
 
 const tempDirs: string[] = [];
+const GIT_INTEGRATION_TIMEOUT_MS = 30_000;
 
 afterEach(() => {
   for (const dir of tempDirs.splice(0, tempDirs.length)) {
@@ -146,149 +147,173 @@ describe("@gommage/core", () => {
     expect(result.commits[0]?.violations[0]?.code).toBe("ai-coauthor");
   });
 
-  it("reads git ranges and formats a report", () => {
-    const dir = createGitRepo();
+  it(
+    "reads git ranges and formats a report",
+    () => {
+      const dir = createGitRepo();
 
-    commitInRepo(dir, "feat: safe commit", "Alice Example", "alice@example.com");
+      commitInRepo(dir, "feat: safe commit", "Alice Example", "alice@example.com");
 
-    commitInRepo(
-      dir,
-      ["feat: ai commit", "", "Co-authored-by: GitHub Copilot <copilot@github.com>"].join("\n"),
-      "Alice Example",
-      "alice@example.com",
-    );
+      commitInRepo(
+        dir,
+        ["feat: ai commit", "", "Co-authored-by: GitHub Copilot <copilot@github.com>"].join("\n"),
+        "Alice Example",
+        "alice@example.com",
+      );
 
-    const result = checkGitRange({ cwd: dir, range: "HEAD~1..HEAD" });
-    const report = formatCheckResult(result);
+      const result = checkGitRange({ cwd: dir, range: "HEAD~1..HEAD" });
+      const report = formatCheckResult(result);
 
-    expect(result.violationCount).toBe(1);
-    expect(report).toContain("[ai-coauthor]");
-    expect(report).toContain("Gommage found 1 violation(s)");
-  });
+      expect(result.violationCount).toBe(1);
+      expect(report).toContain("[ai-coauthor]");
+      expect(report).toContain("Gommage found 1 violation(s)");
+    },
+    GIT_INTEGRATION_TIMEOUT_MS,
+  );
 
-  it("plans commit-message rewrites for violating history", () => {
-    const dir = createGitRepo();
+  it(
+    "plans commit-message rewrites for violating history",
+    () => {
+      const dir = createGitRepo();
 
-    commitInRepo(
-      dir,
-      [
-        "feat: ai commit",
-        "",
-        "🤖 Generated with [Claude Code]",
-        "",
-        "Co-authored-by: GitHub Copilot <copilot@github.com>",
-      ].join("\n"),
-      "Alice Example",
-      "alice@example.com",
-    );
+      commitInRepo(
+        dir,
+        [
+          "feat: ai commit",
+          "",
+          "🤖 Generated with [Claude Code]",
+          "",
+          "Co-authored-by: GitHub Copilot <copilot@github.com>",
+        ].join("\n"),
+        "Alice Example",
+        "alice@example.com",
+      );
 
-    const plan = planHistoryRewrite({ cwd: dir, range: "HEAD" });
+      const plan = planHistoryRewrite({ cwd: dir, range: "HEAD" });
 
-    expect(plan.commits).toHaveLength(1);
-    expect(plan.commits[0]?.sanitizedMessage).toBe("feat: ai commit");
-    expect(plan.commits[0]?.changes).toContain(
-      'remove AI co-author trailer: "Co-authored-by: GitHub Copilot <copilot@github.com>"',
-    );
-  });
+      expect(plan.commits).toHaveLength(1);
+      expect(plan.commits[0]?.sanitizedMessage).toBe("feat: ai commit");
+      expect(plan.commits[0]?.changes).toContain(
+        'remove AI co-author trailer: "Co-authored-by: GitHub Copilot <copilot@github.com>"',
+      );
+    },
+    GIT_INTEGRATION_TIMEOUT_MS,
+  );
 
-  it("plans author replacement for AI-authored commits", () => {
-    const dir = createGitRepo();
+  it(
+    "plans author replacement for AI-authored commits",
+    () => {
+      const dir = createGitRepo();
 
-    commitInRepo(dir, "feat: ai authored", "Codex", "bot@openai.com");
+      commitInRepo(dir, "feat: ai authored", "Codex", "bot@openai.com");
 
-    const plan = planHistoryRewrite({
-      cwd: dir,
-      range: "HEAD",
-      replacementAuthorName: "Test Runner",
-      replacementAuthorEmail: "test@example.com",
-    });
+      const plan = planHistoryRewrite({
+        cwd: dir,
+        range: "HEAD",
+        replacementAuthorName: "Test Runner",
+        replacementAuthorEmail: "test@example.com",
+      });
 
-    expect(plan.commits).toHaveLength(1);
-    expect(plan.commits[0]?.sanitizedAuthorName).toBe("Test Runner");
-    expect(plan.commits[0]?.sanitizedAuthorEmail).toBe("test@example.com");
-    expect(plan.commits[0]?.changes).toContain("replace author identity");
-  });
+      expect(plan.commits).toHaveLength(1);
+      expect(plan.commits[0]?.sanitizedAuthorName).toBe("Test Runner");
+      expect(plan.commits[0]?.sanitizedAuthorEmail).toBe("test@example.com");
+      expect(plan.commits[0]?.changes).toContain("replace author identity");
+    },
+    GIT_INTEGRATION_TIMEOUT_MS,
+  );
 
-  it("formats dry-run rewrite output as a concrete preview", () => {
-    const dir = createGitRepo();
+  it(
+    "formats dry-run rewrite output as a concrete preview",
+    () => {
+      const dir = createGitRepo();
 
-    commitInRepo(
-      dir,
-      ["feat: ai authored", "", "Co-authored-by: Test Runner <noreply@example.com>"].join("\n"),
-      "Codex",
-      "bot@openai.com",
-    );
+      commitInRepo(
+        dir,
+        ["feat: ai authored", "", "Co-authored-by: Test Runner <noreply@example.com>"].join("\n"),
+        "Codex",
+        "bot@openai.com",
+      );
 
-    const plan = planHistoryRewrite({
-      cwd: dir,
-      range: "HEAD",
-      replacementAuthorName: "Test Runner",
-      replacementAuthorEmail: "test@example.com",
-    });
-    const output = formatRewritePlan(plan, { dryRun: true });
+      const plan = planHistoryRewrite({
+        cwd: dir,
+        range: "HEAD",
+        replacementAuthorName: "Test Runner",
+        replacementAuthorEmail: "test@example.com",
+      });
+      const output = formatRewritePlan(plan, { dryRun: true });
 
-    expect(output).toContain("Commit ");
-    expect(output).toContain("Old author:");
-    expect(output).toContain("  Codex <bot@openai.com>");
-    expect(output).toContain("New author:");
-    expect(output).toContain("  Test Runner <test@example.com>");
-    expect(output).toContain("Old message:");
-    expect(output).toContain("  Co-authored-by: Test Runner <noreply@example.com>");
-    expect(output).toContain("New message:");
-    expect(output).toContain("  feat: ai authored");
-    expect(plan.commits[0]?.sanitizedMessage).not.toContain(
-      "Co-authored-by: Test Runner <noreply@example.com>",
-    );
-  });
+      expect(output).toContain("Commit ");
+      expect(output).toContain("Old author:");
+      expect(output).toContain("  Codex <bot@openai.com>");
+      expect(output).toContain("New author:");
+      expect(output).toContain("  Test Runner <test@example.com>");
+      expect(output).toContain("Old message:");
+      expect(output).toContain("  Co-authored-by: Test Runner <noreply@example.com>");
+      expect(output).toContain("New message:");
+      expect(output).toContain("  feat: ai authored");
+      expect(plan.commits[0]?.sanitizedMessage).not.toContain(
+        "Co-authored-by: Test Runner <noreply@example.com>",
+      );
+    },
+    GIT_INTEGRATION_TIMEOUT_MS,
+  );
 
-  it("removes co-author trailers when the rewritten commit still has one author", () => {
-    const dir = createGitRepo();
+  it(
+    "removes co-author trailers when the rewritten commit still has one author",
+    () => {
+      const dir = createGitRepo();
 
-    commitInRepo(
-      dir,
-      ["feat: ai authored", "", "Co-authored-by: Test Runner <noreply@example.com>"].join("\n"),
-      "Codex",
-      "bot@openai.com",
-    );
+      commitInRepo(
+        dir,
+        ["feat: ai authored", "", "Co-authored-by: Test Runner <noreply@example.com>"].join("\n"),
+        "Codex",
+        "bot@openai.com",
+      );
 
-    const plan = planHistoryRewrite({
-      cwd: dir,
-      range: "HEAD",
-      replacementAuthorName: "Test Runner",
-      replacementAuthorEmail: "test@example.com",
-    });
+      const plan = planHistoryRewrite({
+        cwd: dir,
+        range: "HEAD",
+        replacementAuthorName: "Test Runner",
+        replacementAuthorEmail: "test@example.com",
+      });
 
-    expect(plan.commits[0]?.sanitizedMessage).toBe("feat: ai authored");
-    expect(plan.commits[0]?.changes).toContain(
-      'remove redundant co-author trailer: "Co-authored-by: Test Runner <noreply@example.com>"',
-    );
-  });
+      expect(plan.commits[0]?.sanitizedMessage).toBe("feat: ai authored");
+      expect(plan.commits[0]?.changes).toContain(
+        'remove redundant co-author trailer: "Co-authored-by: Test Runner <noreply@example.com>"',
+      );
+    },
+    GIT_INTEGRATION_TIMEOUT_MS,
+  );
 
-  it("rewrites git history to remove AI co-author trailers", () => {
-    const dir = createGitRepo();
+  it(
+    "rewrites git history to remove AI co-author trailers",
+    () => {
+      const dir = createGitRepo();
 
-    commitInRepo(dir, "feat: safe commit", "Alice Example", "alice@example.com");
-    commitInRepo(
-      dir,
-      ["feat: ai commit", "", "Co-authored-by: Codex <bot@openai.com>"].join("\n"),
-      "Alice Example",
-      "alice@example.com",
-    );
+      commitInRepo(dir, "feat: safe commit", "Alice Example", "alice@example.com");
+      commitInRepo(
+        dir,
+        ["feat: ai commit", "", "Co-authored-by: Codex <bot@openai.com>"].join("\n"),
+        "Alice Example",
+        "alice@example.com",
+      );
 
-    const before = checkGitRange({ cwd: dir, range: "HEAD" });
-    expect(before.violationCount).toBe(1);
+      const before = checkGitRange({ cwd: dir, range: "HEAD" });
+      expect(before.violationCount).toBe(1);
 
-    rewriteGitHistory({ cwd: dir, range: "--all" });
+      rewriteGitHistory({ cwd: dir, range: "--all" });
 
-    const message = execFileSync("git", ["log", "-1", "--format=%B"], {
-      cwd: dir,
-      encoding: "utf8",
-    });
-    const after = checkGitRange({ cwd: dir, range: "HEAD" });
+      const message = execFileSync("git", ["log", "-1", "--format=%B"], {
+        cwd: dir,
+        encoding: "utf8",
+      });
+      const after = checkGitRange({ cwd: dir, range: "HEAD" });
 
-    expect(message).not.toContain("Co-authored-by: Codex <bot@openai.com>");
-    expect(after.violationCount).toBe(0);
-  });
+      expect(message).not.toContain("Co-authored-by: Codex <bot@openai.com>");
+      expect(after.violationCount).toBe(0);
+    },
+    GIT_INTEGRATION_TIMEOUT_MS,
+  );
 });
 
 function createTempDir(): string {

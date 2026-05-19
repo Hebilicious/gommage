@@ -13,10 +13,10 @@ jobs:
       pull-requests: write
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
-      - uses: moonrepo/setup-toolchain@v0
+      - uses: moonrepo/setup-toolchain@v0.6.4
         with:
           auto-install: true
       - name: Install dependencies
@@ -24,7 +24,7 @@ jobs:
       - name: Validate workspace
         run: moon run :build :test :lint :typecheck :format-check
       - name: Create release PR or publish
-        uses: changesets/action@v1
+        uses: changesets/action@v1.8.0
         with:
           version: moon run --affected false release:version
           publish: moon run --affected false release:publish
