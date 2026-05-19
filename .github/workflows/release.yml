@@ -22,7 +22,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Validate workspace
-        run: moon ci :build :test :lint :typecheck :format-check
+        run: moon run :build :test :lint :typecheck :format-check
       - name: Create release PR or publish
         uses: changesets/action@v1
         with:

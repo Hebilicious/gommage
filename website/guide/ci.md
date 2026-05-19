@@ -15,7 +15,7 @@ Build the action package and point workflows at the action directory or a publis
 
 - run: pnpm install --frozen-lockfile
 
-- run: moon ci :build :test :lint :typecheck :format-check
+- run: moon run :build :test :lint :typecheck :format-check
 ```
 
 The GitHub Action itself accepts these inputs:
