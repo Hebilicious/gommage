@@ -10,8 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
       pull-requests: write
-      packages: write
     steps:
       - uses: actions/checkout@v6.0.2
         with:
@@ -23,6 +23,10 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Validate workspace
         run: moon run :build :test :lint :typecheck :format-check
+      - name: Use npm trusted publishing client
+        run: |
+          npm install --global npm@latest
+          npm --version
       - name: Create release PR or publish
         uses: changesets/action@v1.8.0
         with:
@@ -31,4 +35,3 @@ jobs:
           createGithubReleases: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

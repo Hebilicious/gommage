@@ -42,22 +42,18 @@ tasks:
       - "/website/**/*"
 
   publish:
-    command: "changeset"
-    args: ["publish"]
+    command: "node"
+    args: ["src/publish.mjs"]
     deps:
       - "core:build"
       - "cli:build"
-      - "github-action:build"
-      - "github-app:build"
       - "cli:test"
-      - "github-action:test"
-      - "github-app:test"
-      - "pre-commit:test"
-      - "shell:test"
     inputs:
       - "/.changeset/**/*"
       - "/package.json"
       - "/pnpm-workspace.yaml"
-      - "/packages/**/*"
-      - "/apps/**/*"
-      - "/website/**/*"
+      - "/packages/core/**/*"
+      - "/apps/cli/**/*"
+      - "src/**/*"
+      - "package.json"
+      - "moon.yml"

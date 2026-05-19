@@ -5,6 +5,9 @@
   "bin": {
     "gommage": "./dist/index.mjs"
   },
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "publishConfig": {
     "access": "public"

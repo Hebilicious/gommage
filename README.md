@@ -128,24 +128,9 @@ The action accepts `cwd`, `config-path`, `range`, and `message-file`. It outputs
 
 ### Use It in a GitHub App
 
-Use the GitHub App package when you want organization-wide PR checks without adding a workflow file to every repository. The package gives your app the policy evaluation and check-run output helpers; your app stays responsible for receiving webhooks, loading repository config, and creating the GitHub check run.
+Use the GitHub App surface when you want organization-wide PR checks without adding a workflow file to every repository. This is distributed as a GitHub App, not as an npm package; install it from the GitHub App or Marketplace flow once available.
 
-```ts
-import { buildCheckRunOutput, evaluatePullRequestCommits } from "@gommage/github-app";
-
-const evaluation = evaluatePullRequestCommits([
-  {
-    sha: "abc1234",
-    message: "feat: add policy",
-    authorName: "Jane Human",
-    authorEmail: "jane@example.com",
-  },
-]);
-
-const output = buildCheckRunOutput(evaluation);
-```
-
-Use this surface when you want one installed GitHub App to enforce the same authorship policy across many repositories, while still allowing each repository to keep its own `.gommage.yml`.
+Use this surface when you want one installed app to enforce the same authorship policy across many repositories, while still allowing each repository to keep its own `.gommage.yml`.
 
 ### Use It Without Node Tooling
 

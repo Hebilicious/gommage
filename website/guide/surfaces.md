@@ -18,8 +18,8 @@
 
 ## GitHub Action
 
-`@gommage/github-action` translates Action inputs into the shared core checks and sets Action outputs.
+The GitHub Action translates Action inputs into the shared core checks and sets Action outputs. It is distributed through GitHub Actions, not npm.
 
 ## GitHub App
 
-`@gommage/github-app` currently provides pull-request evaluation helpers and check-run output builders for a future hosted webhook service.
+The GitHub App surface is for organization-wide pull request checks without adding a workflow file to every repository. It is distributed as a GitHub App or Marketplace listing, not npm.
