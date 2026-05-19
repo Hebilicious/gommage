@@ -5,13 +5,19 @@ on:
     branches:
       - main
 
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+permissions:
+  contents: write
+  id-token: write
+  pull-requests: write
+
 jobs:
   release:
+    name: Changesets
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write
-      pull-requests: write
+    outputs:
+      hasChangesets: ${{ steps.changesets.outputs.hasChangesets }}
     steps:
       - uses: actions/checkout@v6.0.2
         with:
@@ -23,15 +29,141 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Validate workspace
         run: moon run :build :test :lint :typecheck :format-check
-      - name: Use npm trusted publishing client
-        run: |
-          npm install --global npm@latest
-          npm --version
-      - name: Create release PR or publish
+      - name: Create release PR
+        id: changesets
         uses: changesets/action@v1.8.0
         with:
+          title: "release: version packages"
+          commit: "release: version packages"
           version: moon run --affected false release:version
-          publish: moon run --affected false release:publish
           createGithubReleases: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-core:
+    name: Publish Core
+    needs: release
+    if: needs.release.outputs.hasChangesets == 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - uses: moonrepo/setup-toolchain@v0.6.4
+        with:
+          auto-install: true
+
+      - name: Check package version
+        id: version
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./packages/core/package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          PUBLISHED=$(npm view "@gommage/core@${VERSION}" version 2>/dev/null || echo "")
+          if [ -z "$PUBLISHED" ]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install dependencies
+        if: steps.version.outputs.should_release == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Build package
+        if: steps.version.outputs.should_release == 'true'
+        run: moon run core:build
+
+      - name: Pack package
+        if: steps.version.outputs.should_release == 'true'
+        id: pack
+        working-directory: packages/core
+        run: |
+          set -euo pipefail
+          rm -f ./*.tgz
+          pnpm pack
+          TARBALL=$(find . -maxdepth 1 -name '*.tgz' -print -quit)
+          if [ -z "$TARBALL" ]; then
+            echo "::error::Expected pnpm pack to create a tarball."
+            exit 1
+          fi
+          echo "tarball=${TARBALL#./}" >> "$GITHUB_OUTPUT"
+
+      - name: Configure npm registry
+        if: steps.version.outputs.should_release == 'true'
+        run: |
+          echo "registry=https://registry.npmjs.org/" > "$HOME/.npmrc"
+          echo "//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}" >> "$HOME/.npmrc"
+
+      - name: Publish package
+        if: steps.version.outputs.should_release == 'true'
+        working-directory: packages/core
+        env:
+          NPM_CONFIG_PROVENANCE: "false"
+        run: npm publish "${{ steps.pack.outputs.tarball }}" --access public --loglevel verbose
+
+  publish-cli:
+    name: Publish CLI
+    needs: [release, publish-core]
+    if: needs.release.outputs.hasChangesets == 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - uses: moonrepo/setup-toolchain@v0.6.4
+        with:
+          auto-install: true
+
+      - name: Check package version
+        id: version
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./apps/cli/package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          PUBLISHED=$(npm view "@gommage/cli@${VERSION}" version 2>/dev/null || echo "")
+          if [ -z "$PUBLISHED" ]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install dependencies
+        if: steps.version.outputs.should_release == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Build package
+        if: steps.version.outputs.should_release == 'true'
+        run: moon run cli:build
+
+      - name: Pack package
+        if: steps.version.outputs.should_release == 'true'
+        id: pack
+        working-directory: apps/cli
+        run: |
+          set -euo pipefail
+          rm -f ./*.tgz
+          pnpm pack
+          TARBALL=$(find . -maxdepth 1 -name '*.tgz' -print -quit)
+          if [ -z "$TARBALL" ]; then
+            echo "::error::Expected pnpm pack to create a tarball."
+            exit 1
+          fi
+          echo "tarball=${TARBALL#./}" >> "$GITHUB_OUTPUT"
+
+      - name: Configure npm registry
+        if: steps.version.outputs.should_release == 'true'
+        run: |
+          echo "registry=https://registry.npmjs.org/" > "$HOME/.npmrc"
+          echo "//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}" >> "$HOME/.npmrc"
+
+      - name: Publish package
+        if: steps.version.outputs.should_release == 'true'
+        working-directory: apps/cli
+        env:
+          NPM_CONFIG_PROVENANCE: "false"
+        run: npm publish "${{ steps.pack.outputs.tarball }}" --access public --loglevel verbose
