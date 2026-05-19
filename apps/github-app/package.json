@@ -1,6 +1,6 @@
 {
   "name": "@gommage/github-app",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "GitHub App surface for Gommage.",
   "type": "module",
   "publishConfig": {
