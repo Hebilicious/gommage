@@ -28,6 +28,7 @@ jobs:
         with:
           version: moon run --affected false release:version
           publish: moon run --affected false release:publish
+          createGithubReleases: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
