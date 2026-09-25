@@ -27,3 +27,9 @@ Feature: CLI enforcement
     Then the command exits with code 0
     And stdout contains "Gommage rewrote 1 commit(s)."
     And the latest commit message in that repository does not contain "Co-authored-by: Codex <bot@openai.com>"
+
+  Scenario: checking two branch ranges in one run inspects both branches
+    Given a git repository with AI co-author commits on two feature branches
+    When I run the CLI check command against both feature branch ranges
+    Then the command exits with code 1
+    And the reported violation count is 2

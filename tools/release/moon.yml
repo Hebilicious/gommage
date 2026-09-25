@@ -9,6 +9,8 @@ tags:
 tasks:
   changeset:
     command: "changeset"
+    options:
+      runFromWorkspaceRoot: true
     inputs:
       - "/.changeset/**/*"
       - "/package.json"
@@ -22,6 +24,8 @@ tasks:
   status:
     command: "changeset"
     args: ["status"]
+    options:
+      runFromWorkspaceRoot: true
     inputs:
       - "/.changeset/**/*"
       - "/package.json"
@@ -33,6 +37,8 @@ tasks:
   version:
     command: "changeset"
     args: ["version"]
+    options:
+      runFromWorkspaceRoot: true
     inputs:
       - "/.changeset/**/*"
       - "/package.json"
@@ -44,6 +50,8 @@ tasks:
   publish:
     command: "changeset"
     args: ["publish"]
+    options:
+      runFromWorkspaceRoot: true
     deps:
       - "core:build"
       - "cli:build"

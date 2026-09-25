@@ -5,10 +5,10 @@ javascript:
   inferTasksFromScripts: false
 
 node:
-  version: "26.1.0"
+  version: "26.10.0"
 
 pnpm:
-  version: "11.1.3"
+  version: "12.6.0"
 
 typescript:
   syncProjectReferences: false
