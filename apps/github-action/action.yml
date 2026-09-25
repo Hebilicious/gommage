@@ -10,7 +10,7 @@ inputs:
     description: "Explicit path to .gommage.yml."
     required: false
   range:
-    description: "Git revision or range to inspect. Defaults to .gommage.yml scope.range or HEAD."
+    description: "One or more git revisions or ranges to inspect, separated by newlines or commas. Defaults to .gommage.yml scope.range or HEAD."
     required: false
   message-file:
     description: "Optional commit message file to validate instead of a git range."

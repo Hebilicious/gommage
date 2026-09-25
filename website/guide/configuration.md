@@ -20,6 +20,15 @@ scope:
   range: "origin/main..HEAD"
 ```
 
+`scope.range` accepts either a single revision or a list. Each entry is passed to git as its own argument, so a list unions independent ranges:
+
+```yaml
+scope:
+  range:
+    - "origin/main..HEAD"
+    - "origin/bartering..HEAD"
+```
+
 ## Rule semantics
 
 - `no-ai-coauthor`: flags known AI co-author identities.

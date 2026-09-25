@@ -1,8 +1,8 @@
 # Gommage
 
-Gommage keeps AI assistants out of your git authorship metadata. It checks commit messages and commit authors for AI co-author trailers, generated-with badges, blocked patterns, blocked email domains, and commits authored by known bot identities.
+Gommage keeps AI assistants out of your git authorship metadata. It checks commit messages and commit authors for AI co-author trailers, generated-with badges, blocked patterns, blocked email domains, and commits authored by known bot identities. It also cleans the same attribution out of pull request titles and bodies, where agent tools leave a permanent public footer.
 
-It is meant to fit into the workflow you already use: local checks, commit hooks, CI, GitHub Actions, shell-only environments, and history cleanup.
+It is meant to fit into the workflow you already use: local checks, commit hooks, CI, GitHub Actions, shell-only environments, history cleanup, and pull request hygiene.
 
 ## Documentation
 
@@ -63,6 +63,12 @@ Check a specific range before opening a pull request:
 gommage check origin/main..HEAD
 ```
 
+Check several ranges in one run:
+
+```bash
+gommage check "origin/main..HEAD" "origin/bartering..HEAD"
+```
+
 Get machine-readable output for scripts:
 
 ```bash
@@ -78,6 +84,36 @@ gommage install
 ```
 
 The hook validates the commit message file and fails the commit if an AI trailer or blocked marker is present. Use this when you want fast local feedback before CI.
+
+### Clean Pull Request Text
+
+Agent tools also write a generated-with footer into pull request bodies, which is public and permanent. Check it, then strip it through the GitHub CLI:
+
+```bash
+gommage pr check --pr 106
+gommage pr fix --pr 106 --dry-run
+gommage pr fix --pr 106
+```
+
+`pr check` exits non-zero on a violation, so it works as a merge gate.
+
+Cleaning must happen before the merge. GitHub keeps a merged pull request's commits reachable at `refs/pull/<number>/head` permanently, so a rewrite afterwards leaves the original commit pages live. `--commits` does the whole scrub in one run:
+
+```bash
+gommage pr fix --pr 106 --commits --gpg-sign \
+  --author-name "Jane Human" --author-email jane@example.com
+```
+
+### Prevent Leakage Into Merged History
+
+Restrict the repository so attribution cannot reach the default branch:
+
+```bash
+gommage protect --dry-run
+gommage protect
+```
+
+That leaves squash as the only merge method and blanks the default squash body, so neither a rebase merge nor the repository's commit-message setting can copy AI trailers into the merged commit.
 
 ### Clean Existing History
 
@@ -97,6 +133,13 @@ You can restrict the rewrite and set the replacement identity explicitly:
 
 ```bash
 gommage fix --repo . --range HEAD~10..HEAD --author-name "Jane Human" --author-email jane@example.com
+```
+
+Rewritten commits are committed by the replacement identity, the same way `git rebase` and `git commit --amend` behave. Sign them when the repository requires verified commits:
+
+```bash
+gommage fix --repo . --gpg-sign
+gommage fix --repo . --gpg-sign --gpg-key 0123456789ABCDEF
 ```
 
 History rewrites are destructive by nature. Review the dry run first, coordinate with collaborators, and push rewritten history only when everyone expects it.
@@ -124,7 +167,7 @@ jobs:
           range: origin/${{ github.base_ref }}..HEAD
 ```
 
-The action accepts `cwd`, `config-path`, `range`, and `message-file`. It outputs `violations`, `commits-checked`, and `config-path`.
+The action accepts `cwd`, `config-path`, `range`, and `message-file`. The `range` input takes one revision, or several separated by newlines or commas. It outputs `violations`, `commits-checked`, and `config-path`.
 
 ### Use It in a GitHub App
 

@@ -59,6 +59,58 @@ When("I run the CLI check command against that message file", function (this: Go
   );
 });
 
+Given(
+  "a git repository with AI co-author commits on two feature branches",
+  function (this: GommageWorld) {
+    const repoDir = createGitRepo(this);
+    commitFile(repoDir, "base\n", "feat: base commit");
+
+    for (const branch of ["feature-a", "feature-b"]) {
+      execFileSync("git", ["checkout", "-q", "-b", branch, "main"], {
+        cwd: repoDir,
+        stdio: "ignore",
+      });
+      commitFile(
+        repoDir,
+        `${branch}\n`,
+        [`feat: ${branch}`, "", "Co-authored-by: Claude <noreply@anthropic.com>"].join("\n"),
+      );
+      execFileSync("git", ["checkout", "-q", "main"], { cwd: repoDir, stdio: "ignore" });
+    }
+
+    this.currentRepoDir = repoDir;
+  },
+);
+
+When(
+  "I run the CLI check command against both feature branch ranges",
+  function (this: GommageWorld) {
+    this.lastCommand = spawnSync(
+      "node",
+      [
+        cliEntrypoint,
+        "check",
+        "--cwd",
+        this.currentRepoDir ?? "",
+        "--output",
+        "json",
+        "main..feature-a",
+        "main..feature-b",
+      ],
+      {
+        cwd: workspaceRoot,
+        encoding: "utf8",
+      },
+    );
+  },
+);
+
+Then("the reported violation count is {int}", function (this: GommageWorld, expected: number) {
+  assert.ok(this.lastCommand, "Expected a command to have been executed.");
+  const result = JSON.parse(this.lastCommand.stdout) as { violationCount: number };
+  assert.equal(result.violationCount, expected);
+});
+
 When("I run the CLI install command in that repository", function (this: GommageWorld) {
   this.lastCommand = spawnSync(
     "node",
@@ -132,3 +184,9 @@ Then(
     );
   },
 );
+
+function commitFile(repoDir: string, contents: string, message: string): void {
+  writeFileSync(`${repoDir}/file.txt`, contents);
+  execFileSync("git", ["add", "file.txt"], { cwd: repoDir, stdio: "ignore" });
+  execFileSync("git", ["commit", "-m", message], { cwd: repoDir, stdio: "ignore" });
+}

@@ -21,7 +21,7 @@ async function run(): Promise<void> {
       : checkGitRange({
           cwd,
           configPath,
-          range: range ?? loaded.config.scope.range,
+          range: parseRanges(range) ?? loaded.config.scope.range,
         });
 
     core.setOutput("violations", String(result.violationCount));
@@ -45,6 +45,19 @@ async function run(): Promise<void> {
 function getOptionalInput(name: string): string | undefined {
   const value = core.getInput(name);
   return value.length > 0 ? value : undefined;
+}
+
+function parseRanges(value: string | undefined): string[] | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const ranges = value
+    .split(/\r?\n|,/u)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+  return ranges.length > 0 ? ranges : undefined;
 }
 
 void run();
