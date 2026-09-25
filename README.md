@@ -1,8 +1,8 @@
 # Gommage
 
 [![CI](https://github.com/Hebilicious/gommage/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Hebilicious/gommage/actions/workflows/ci.yml)
-[![@gommage/cli on npm](https://img.shields.io/npm/v/@gommage/cli)](https://www.npmjs.com/package/@gommage/cli)
-[![@gommage/core on npm](https://img.shields.io/npm/v/@gommage/core)](https://www.npmjs.com/package/@gommage/core)
+[![@gommage/cli on npm](https://img.shields.io/npm/v/@gommage/cli?label=%40gommage%2Fcli)](https://www.npmjs.com/package/@gommage/cli)
+[![@gommage/core on npm](https://img.shields.io/npm/v/@gommage/core?label=%40gommage%2Fcore)](https://www.npmjs.com/package/@gommage/core)
 
 Gommage keeps AI assistants out of your git authorship metadata. It checks commit messages and commit authors for AI co-author trailers, generated-with badges, blocked patterns, blocked email domains, and commits authored by known bot identities. It also cleans the same attribution out of pull request titles and bodies, where agent tools leave a permanent public footer.
 
