@@ -25,6 +25,8 @@ tasks:
       - "node"
       - "--target"
       - "node20"
+      - "--tsconfig"
+      - "tsconfig.build.json"
     deps:
       - "^:build"
     inputs:
@@ -32,6 +34,7 @@ tasks:
       - "action.yml"
       - "package.json"
       - "tsconfig.json"
+      - "tsconfig.build.json"
     outputs:
       - "dist"
 
@@ -64,7 +67,7 @@ tasks:
       - "/packages/bdd-utils/**/*"
 
   typecheck:
-    command: "tsgo"
+    command: "tsc"
     args: ["-p", "tsconfig.json", "--noEmit"]
     deps:
       - "^:typecheck"

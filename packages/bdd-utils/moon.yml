@@ -17,7 +17,7 @@ tasks:
       - "moon.yml"
 
   typecheck:
-    command: "tsgo"
+    command: "tsc"
     args: ["-p", "tsconfig.json", "--noEmit"]
     inputs:
       - "src/**/*"

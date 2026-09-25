@@ -30,7 +30,7 @@ tasks:
       - "tsconfig.json"
 
   typecheck:
-    command: "tsgo"
+    command: "tsc"
     args: ["-p", "tsconfig.json", "--noEmit"]
     inputs:
       - "tests/**/*"
