@@ -861,21 +861,6 @@ function planCommitRewrite(
     changes.push("replace author identity");
   }
 
-  // A rewritten commit is committed by whoever runs the rewrite, matching what
-  // `git rebase` and `git commit --amend` do. Without a replacement identity the
-  // original committer is preserved rather than replaced by the author.
-  const originalCommitterName = commit.committerName ?? commit.authorName;
-  const originalCommitterEmail = commit.committerEmail ?? commit.authorEmail;
-  const sanitizedCommitterName = replacementIdentity?.name ?? originalCommitterName;
-  const sanitizedCommitterEmail = replacementIdentity?.email ?? originalCommitterEmail;
-
-  if (
-    sanitizedCommitterName !== originalCommitterName ||
-    sanitizedCommitterEmail !== originalCommitterEmail
-  ) {
-    changes.push("replace committer identity");
-  }
-
   removeSingleAuthorTrailers(
     lineEntries,
     keptCoAuthorIndexes,
@@ -896,14 +881,29 @@ function planCommitRewrite(
     );
   }
 
-  if (
-    sanitizedMessage === commit.message &&
-    sanitizedAuthorName === commit.authorName &&
-    sanitizedAuthorEmail === commit.authorEmail &&
-    sanitizedCommitterName === originalCommitterName &&
-    sanitizedCommitterEmail === originalCommitterEmail
-  ) {
+  const messageChanged = sanitizedMessage !== commit.message;
+  const authorChanged =
+    sanitizedAuthorName !== commit.authorName || sanitizedAuthorEmail !== commit.authorEmail;
+
+  // A commit is only rewritten when a message or author rule fires. A differing
+  // committer alone is not a violation, so leave such a commit untouched.
+  if (!messageChanged && !authorChanged) {
     return null;
+  }
+
+  // A rewritten commit is committed by whoever runs the rewrite, matching what
+  // `git rebase` and `git commit --amend` do. Without a replacement identity the
+  // original committer is preserved rather than replaced by the author.
+  const originalCommitterName = commit.committerName ?? commit.authorName;
+  const originalCommitterEmail = commit.committerEmail ?? commit.authorEmail;
+  const sanitizedCommitterName = replacementIdentity?.name ?? originalCommitterName;
+  const sanitizedCommitterEmail = replacementIdentity?.email ?? originalCommitterEmail;
+
+  if (
+    sanitizedCommitterName !== originalCommitterName ||
+    sanitizedCommitterEmail !== originalCommitterEmail
+  ) {
+    changes.push("replace committer identity");
   }
 
   return {

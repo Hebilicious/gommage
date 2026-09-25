@@ -576,6 +576,62 @@ describe("@gommage/core", () => {
       pullRequestRevisionRange({ baseRefName: "bartering", headRefName: "branch/route-solver-v3" }),
     ).toBe("origin/bartering..branch/route-solver-v3");
   });
+
+  it(
+    "does not plan a commit whose only difference is the committer identity",
+    () => {
+      const dir = createGitRepo();
+
+      commitInRepo(dir, "feat: plain human commit", "Alice Example", "alice@example.com", {
+        name: "GitHub",
+        email: "noreply@github.com",
+      });
+
+      const before = readIdentity(dir, "HEAD", "%H");
+      const plan = planHistoryRewrite({ cwd: dir, range: "--all" });
+
+      expect(plan.commits).toHaveLength(0);
+
+      rewriteGitHistory({ cwd: dir, range: "--all" });
+
+      expect(readIdentity(dir, "HEAD", "%H")).toBe(before);
+      expect(readIdentity(dir, "HEAD", "%cn")).toBe("GitHub");
+    },
+    GIT_INTEGRATION_TIMEOUT_MS,
+  );
+
+  it(
+    "replaces the committer only on the commits that are rewritten",
+    () => {
+      const dir = createGitRepo();
+
+      commitInRepo(dir, "feat: clean commit", "Alice Example", "alice@example.com", {
+        name: "GitHub",
+        email: "noreply@github.com",
+      });
+      commitInRepo(
+        dir,
+        ["feat: ai trailer", "", "Co-authored-by: Codex <bot@openai.com>"].join("\n"),
+        "Alice Example",
+        "alice@example.com",
+        { name: "GitHub", email: "noreply@github.com" },
+      );
+
+      const cleanSha = readIdentity(dir, "HEAD~1", "%H");
+      const violatingSha = readIdentity(dir, "HEAD", "%H");
+      const plan = planHistoryRewrite({ cwd: dir, range: "--all" });
+
+      expect(plan.commits.map((commit) => commit.sha)).toEqual([violatingSha]);
+      expect(plan.commits[0]?.changes).toContain("replace committer identity");
+
+      rewriteGitHistory({ cwd: dir, range: "--all" });
+
+      expect(readIdentity(dir, "HEAD", "%cn")).toBe("Test Runner");
+      expect(readIdentity(dir, "HEAD~1", "%H")).toBe(cleanSha);
+      expect(readIdentity(dir, "HEAD~1", "%cn")).toBe("GitHub");
+    },
+    GIT_INTEGRATION_TIMEOUT_MS,
+  );
 });
 
 function createTempDir(): string {
