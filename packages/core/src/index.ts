@@ -78,6 +78,11 @@ export interface CheckResult {
   config: GommageConfig;
   commits: CommitCheckResult[];
   violationCount: number;
+  /**
+   * The revision selectors that were actually inspected, joined with a space.
+   * Unset when no git history was read, such as a commit message file check.
+   */
+  range?: string;
 }
 
 export interface LoadConfigOptions {
@@ -298,12 +303,16 @@ export function checkCommits(
 export function checkGitRange(options: CheckGitRangeOptions = {}): CheckResult {
   const { config } = loadConfig(options);
   const ranges = normalizeRanges(options.range ?? config.scope.range);
+  const effectiveRanges = ranges.length > 0 ? ranges : ["HEAD"];
   const commits = readCommitsFromGit({
     cwd: options.cwd,
-    range: ranges.length > 0 ? ranges : "HEAD",
+    range: effectiveRanges,
   });
 
-  return checkCommits(commits, config);
+  return {
+    ...checkCommits(commits, config),
+    range: effectiveRanges.join(" "),
+  };
 }
 
 export function checkMessageFile(options: CheckMessageFileOptions): CheckResult {
@@ -518,11 +527,13 @@ export function readCommitsFromGit(options: {
 
 export function formatCheckResult(result: CheckResult): string {
   if (result.violationCount === 0) {
+    const scope = result.range ? ` in ${result.range}` : "";
+
     if (result.commits.length === 0) {
-      return "Gommage checked 0 commits and found no violations.";
+      return `Gommage checked 0 commits${scope} and found no violations.`;
     }
 
-    return `Gommage checked ${result.commits.length} commit(s) and found no violations.`;
+    return `Gommage checked ${result.commits.length} commit(s)${scope} and found no violations.`;
   }
 
   const blocks = result.commits

@@ -33,3 +33,17 @@ Feature: CLI enforcement
     When I run the CLI check command against both feature branch ranges
     Then the command exits with code 1
     And the reported violation count is 2
+
+  Scenario: checking every ref inspects commits outside HEAD and names the scope
+    Given a git repository with a violating commit only on another branch
+    When I run the CLI check command in that repository with "--all" and json output
+    Then the command exits with code 1
+    And the reported violation count is 1
+    And stdout contains "ai-coauthor"
+    And stdout contains "--all"
+
+  Scenario: checking without a selector inspects HEAD and names it
+    Given a git repository with a violating commit only on another branch
+    When I run the CLI check command in that repository
+    Then the command exits with code 0
+    And stdout contains "in HEAD and found no violations."

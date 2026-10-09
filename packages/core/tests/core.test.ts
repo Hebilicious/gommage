@@ -351,6 +351,47 @@ describe("@gommage/core", () => {
     GIT_INTEGRATION_TIMEOUT_MS,
   );
 
+  it(
+    "names the revision selectors it checked",
+    () => {
+      const dir = createGitRepo();
+
+      commitInRepo(dir, "feat: base", "Alice Example", "alice@example.com");
+      commitOnBranch(
+        dir,
+        "feature-a",
+        ["feat: a", "", "Co-authored-by: Claude <noreply@anthropic.com>"].join("\n"),
+      );
+      commitOnBranch(dir, "feature-b", "feat: b");
+
+      const explicit = checkGitRange({ cwd: dir, range: "main..feature-a" });
+      const multiple = checkGitRange({
+        cwd: dir,
+        range: ["main..feature-a", "main..feature-b"],
+      });
+      const fallback = checkGitRange({ cwd: dir });
+
+      expect(explicit.range).toBe("main..feature-a");
+      expect(multiple.range).toBe("main..feature-a main..feature-b");
+      expect(fallback.range).toBe("HEAD");
+      expect(formatCheckResult(fallback)).toBe(
+        "Gommage checked 1 commit(s) in HEAD and found no violations.",
+      );
+    },
+    GIT_INTEGRATION_TIMEOUT_MS,
+  );
+
+  it("keeps the summary wording when no scope is known", () => {
+    const dir = createTempDir();
+    const messageFile = join(dir, "COMMIT_EDITMSG");
+    writeFileSync(messageFile, "feat: clean commit");
+
+    const result = checkMessageFile({ cwd: dir, messageFile });
+
+    expect(result.range).toBeUndefined();
+    expect(formatCheckResult(result)).toBe("Gommage checked 1 commit(s) and found no violations.");
+  });
+
   it("reads a list of ranges from yaml", () => {
     const dir = createTempDir();
     writeFileSync(

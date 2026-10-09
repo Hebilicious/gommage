@@ -105,6 +105,52 @@ When(
   },
 );
 
+Given(
+  "a git repository with a violating commit only on another branch",
+  function (this: GommageWorld) {
+    const repoDir = createGitRepo(this);
+    commitFile(repoDir, "base\n", "feat: base commit");
+
+    execFileSync("git", ["checkout", "-q", "-b", "feature-violation", "main"], {
+      cwd: repoDir,
+      stdio: "ignore",
+    });
+    commitFile(
+      repoDir,
+      "violating\n",
+      ["feat: violating commit", "", "Co-authored-by: Codex <bot@openai.com>"].join("\n"),
+    );
+    execFileSync("git", ["checkout", "-q", "main"], { cwd: repoDir, stdio: "ignore" });
+
+    this.currentRepoDir = repoDir;
+  },
+);
+
+When(
+  "I run the CLI check command in that repository with {string} and json output",
+  function (this: GommageWorld, selector: string) {
+    this.lastCommand = spawnSync(
+      "node",
+      [cliEntrypoint, "check", "--cwd", this.currentRepoDir ?? "", "--output", "json", selector],
+      {
+        cwd: workspaceRoot,
+        encoding: "utf8",
+      },
+    );
+  },
+);
+
+When("I run the CLI check command in that repository", function (this: GommageWorld) {
+  this.lastCommand = spawnSync(
+    "node",
+    [cliEntrypoint, "check", "--cwd", this.currentRepoDir ?? ""],
+    {
+      cwd: workspaceRoot,
+      encoding: "utf8",
+    },
+  );
+});
+
 Then("the reported violation count is {int}", function (this: GommageWorld, expected: number) {
   assert.ok(this.lastCommand, "Expected a command to have been executed.");
   const result = JSON.parse(this.lastCommand.stdout) as { violationCount: number };
